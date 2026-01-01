@@ -1,11 +1,14 @@
 /**
  * Tower Popup
- * Appears when clicking near the path, lets you choose which tower to place
+ * Centered modal for tower selection with better visuals
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import Svg, { Circle, Polygon, G } from 'react-native-svg';
 import { TOWER_CONFIGS, COLORS, TowerType } from '../game/config';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface TowerPopupProps {
   visible: boolean;
@@ -14,6 +17,62 @@ interface TowerPopupProps {
   onSelect: (type: TowerType) => void;
   onClose: () => void;
 }
+
+// Geometric tower icons
+const TowerIcon = ({ type, size, color }: { type: TowerType; size: number; color: string }) => {
+  const center = size / 2;
+  const r = size * 0.35;
+  
+  switch (type) {
+    case 'validator':
+      // Lightning bolt shape (triangle pointing up)
+      return (
+        <Svg width={size} height={size}>
+          <Polygon
+            points={`${center},${center - r} ${center + r * 0.8},${center + r * 0.5} ${center - r * 0.8},${center + r * 0.5}`}
+            fill={color}
+            stroke={COLORS.bgDark}
+            strokeWidth={2}
+          />
+        </Svg>
+      );
+    case 'jupiter':
+      // Hexagon (planet-like)
+      const hexPoints = [];
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 2;
+        hexPoints.push(`${center + Math.cos(angle) * r},${center + Math.sin(angle) * r}`);
+      }
+      return (
+        <Svg width={size} height={size}>
+          <Polygon
+            points={hexPoints.join(' ')}
+            fill={color}
+            stroke={COLORS.bgDark}
+            strokeWidth={2}
+          />
+        </Svg>
+      );
+    case 'tensor':
+      // Diamond
+      return (
+        <Svg width={size} height={size}>
+          <Polygon
+            points={`${center},${center - r} ${center + r},${center} ${center},${center + r} ${center - r},${center}`}
+            fill={color}
+            stroke={COLORS.bgDark}
+            strokeWidth={2}
+          />
+        </Svg>
+      );
+    default:
+      return (
+        <Svg width={size} height={size}>
+          <Circle cx={center} cy={center} r={r} fill={color} />
+        </Svg>
+      );
+  }
+};
 
 export const TowerPopup: React.FC<TowerPopupProps> = ({
   visible,
@@ -27,46 +86,58 @@ export const TowerPopup: React.FC<TowerPopupProps> = ({
   const towers: TowerType[] = ['validator', 'jupiter', 'tensor'];
 
   return (
-    <Modal transparent visible={visible} onRequestClose={onClose}>
+    <Modal transparent visible={visible} onRequestClose={onClose} animationType="fade">
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
-        <View
-          style={[
-            styles.popup,
-            {
-              left: Math.min(position.x, 400),
-              top: Math.min(position.y, 500),
-            },
-          ]}
-        >
-          <Text style={styles.title}>Build Tower</Text>
-          
-          {towers.map((type) => {
-            const config = TOWER_CONFIGS[type];
-            const canAfford = sol >= config.cost;
+        <View style={styles.popup}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Build Tower</Text>
+            <Text style={styles.solDisplay}>◎ {sol} available</Text>
+          </View>
 
-            return (
-              <TouchableOpacity
-                key={type}
-                style={[styles.towerOption, !canAfford && styles.disabled]}
-                onPress={() => canAfford && onSelect(type)}
-                disabled={!canAfford}
-              >
-                <View style={[styles.icon, { backgroundColor: config.color }]}>
-                  <Text style={styles.iconText}>{config.icon}</Text>
-                </View>
-                <View style={styles.info}>
-                  <Text style={styles.name}>{config.name}</Text>
-                  <Text style={styles.desc}>{config.description}</Text>
-                </View>
-                <Text style={[styles.cost, !canAfford && styles.costRed]}>
-                  ◎{config.cost}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {/* Tower Options */}
+          <View style={styles.towersGrid}>
+            {towers.map((type) => {
+              const config = TOWER_CONFIGS[type];
+              const canAfford = sol >= config.cost;
 
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.towerOption, !canAfford && styles.disabled]}
+                  onPress={() => canAfford && onSelect(type)}
+                  disabled={!canAfford}
+                  activeOpacity={0.7}
+                >
+                  {/* Icon */}
+                  <View style={[styles.iconContainer, { backgroundColor: config.color + '30' }]}>
+                    <TowerIcon type={type} size={50} color={config.color} />
+                  </View>
+
+                  {/* Info */}
+                  <Text style={styles.towerName}>{config.name}</Text>
+                  <Text style={styles.towerDesc}>{config.description}</Text>
+                  
+                  {/* Stats */}
+                  <View style={styles.statsRow}>
+                    <Text style={styles.stat}>⚔️{config.damage[0]}</Text>
+                    <Text style={styles.stat}>📡{config.rangeLevels[0]}</Text>
+                  </View>
+
+                  {/* Cost */}
+                  <View style={[styles.costBadge, !canAfford && styles.costBadgeRed]}>
+                    <Text style={[styles.costText, !canAfford && styles.costTextRed]}>
+                      ◎ {config.cost}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Cancel Button */}
           <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>✕ Cancel</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -77,80 +148,112 @@ export const TowerPopup: React.FC<TowerPopupProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   popup: {
-    position: 'absolute',
-    backgroundColor: COLORS.bgCard,
-    borderRadius: 12,
-    padding: 16,
-    minWidth: 260,
+    backgroundColor: COLORS.bgDarker,
+    borderRadius: 20,
+    padding: 24,
+    width: Math.min(SCREEN_WIDTH * 0.9, 500),
     borderWidth: 2,
     borderColor: COLORS.solanaPurple,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: COLORS.solanaPurple,
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
   },
   title: {
     color: COLORS.text,
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  solDisplay: {
+    color: COLORS.solanaGreen,
+    fontSize: 14,
+    marginTop: 8,
+  },
+  towersGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
   towerOption: {
-    flexDirection: 'row',
+    flex: 1,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 6,
     alignItems: 'center',
-    backgroundColor: COLORS.bgCardLight,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: COLORS.bgCardLight,
   },
   disabled: {
     opacity: 0.4,
   },
-  icon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  iconContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginBottom: 12,
   },
-  iconText: {
-    fontSize: 22,
-  },
-  info: {
-    flex: 1,
-  },
-  name: {
+  towerName: {
     color: COLORS.text,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  desc: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  cost: {
-    color: COLORS.solanaGreen,
     fontSize: 16,
     fontWeight: '700',
+    marginBottom: 4,
   },
-  costRed: {
+  towerDesc: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    textAlign: 'center',
+    marginBottom: 10,
+    minHeight: 30,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  stat: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    marginHorizontal: 6,
+  },
+  costBadge: {
+    backgroundColor: COLORS.solanaGreen,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+  },
+  costBadgeRed: {
+    backgroundColor: COLORS.bgCardLight,
+  },
+  costText: {
+    color: COLORS.bgDark,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  costTextRed: {
     color: COLORS.hpLow,
   },
   cancelBtn: {
-    marginTop: 8,
-    paddingVertical: 10,
     alignItems: 'center',
+    paddingVertical: 14,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: 12,
   },
   cancelText: {
     color: COLORS.textMuted,
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
-

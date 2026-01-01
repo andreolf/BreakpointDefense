@@ -1,8 +1,8 @@
 /**
  * Zoom & Pan Container
  * - Scroll wheel to zoom
- * - Click & drag to pan
- * - Zoom buttons
+ * - Left-click drag to pan (hold and drag)
+ * - Single click to place tower
  */
 
 import React, { useState, useRef, useCallback } from 'react';
@@ -16,9 +16,10 @@ interface ZoomPanContainerProps {
   onMapClick?: (x: number, y: number) => void;
 }
 
-const MIN_ZOOM = 0.6;
+const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.5;
-const ZOOM_STEP = 0.15;
+const ZOOM_STEP = 0.1;
+const DRAG_THRESHOLD = 8; // Pixels moved before it's considered a drag
 
 export const ZoomPanContainer: React.FC<ZoomPanContainerProps> = ({
   children,
@@ -31,12 +32,13 @@ export const ZoomPanContainer: React.FC<ZoomPanContainerProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [translateStart, setTranslateStart] = useState({ x: 0, y: 0 });
+  const [hasMoved, setHasMoved] = useState(false);
   const containerRef = useRef<View>(null);
 
-  // Clamp translation to keep content in view
+  // Clamp translation
   const clampTranslate = useCallback((tx: number, ty: number, s: number) => {
-    const maxX = Math.max(0, (width * s - width) / 2);
-    const maxY = Math.max(0, (height * s - height) / 2);
+    const maxX = Math.max(0, (width * s - width) / 2 + 100);
+    const maxY = Math.max(0, (height * s - height) / 2 + 100);
     return {
       x: Math.max(-maxX, Math.min(maxX, tx)),
       y: Math.max(-maxY, Math.min(maxY, ty)),
@@ -47,26 +49,42 @@ export const ZoomPanContainer: React.FC<ZoomPanContainerProps> = ({
   const handleWheel = useCallback((e: any) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-    setScale((prev) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev + delta)));
-  }, []);
+    const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, scale + delta));
+    
+    // Zoom toward mouse position
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left - width / 2;
+    const mouseY = e.clientY - rect.top - height / 2;
+    
+    const scaleChange = newScale / scale;
+    const newTranslateX = mouseX - (mouseX - translate.x) * scaleChange;
+    const newTranslateY = mouseY - (mouseY - translate.y) * scaleChange;
+    
+    setScale(newScale);
+    setTranslate(clampTranslate(newTranslateX, newTranslateY, newScale));
+  }, [scale, translate, width, height, clampTranslate]);
 
   // Start drag
   const handleMouseDown = useCallback((e: any) => {
-    // Only pan with middle mouse or if holding space (not implemented here, use middle button)
-    // For now, right-click or middle-click to pan, left-click to place
-    if (e.button === 1 || e.button === 2) {
-      e.preventDefault();
-      setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
-      setTranslateStart(translate);
-    }
+    if (e.button !== 0) return; // Left click only
+    setIsDragging(true);
+    setHasMoved(false);
+    setDragStart({ x: e.clientX, y: e.clientY });
+    setTranslateStart(translate);
   }, [translate]);
 
   // Drag move
   const handleMouseMove = useCallback((e: any) => {
     if (!isDragging) return;
+    
     const dx = e.clientX - dragStart.x;
     const dy = e.clientY - dragStart.y;
+    
+    // Check if we've moved enough to be considered a drag
+    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+      setHasMoved(true);
+    }
+    
     const newTranslate = clampTranslate(
       translateStart.x + dx,
       translateStart.y + dy,
@@ -75,51 +93,56 @@ export const ZoomPanContainer: React.FC<ZoomPanContainerProps> = ({
     setTranslate(newTranslate);
   }, [isDragging, dragStart, translateStart, scale, clampTranslate]);
 
-  // End drag
-  const handleMouseUp = useCallback(() => {
+  // End drag - if didn't move much, treat as click
+  const handleMouseUp = useCallback((e: any) => {
+    if (!isDragging) return;
     setIsDragging(false);
-  }, []);
-
-  // Click to place tower (left click only, and only if not dragging)
-  const handleClick = useCallback((e: any) => {
-    if (e.button !== 0) return; // Left click only
-    if (!onMapClick) return;
     
-    // Get click position relative to the scaled/translated content
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-    
-    // Convert to map coordinates
-    const mapX = (clickX - translate.x - width / 2 * (scale - 1)) / scale;
-    const mapY = (clickY - translate.y - height / 2 * (scale - 1)) / scale;
-    
-    onMapClick(mapX, mapY);
-  }, [onMapClick, translate, scale, width, height]);
+    // If we didn't drag, treat as click
+    if (!hasMoved && onMapClick) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      
+      // Convert screen coords to map coords
+      const mapX = (clickX - width / 2 - translate.x) / scale + width / 2;
+      const mapY = (clickY - height / 2 - translate.y) / scale + height / 2;
+      
+      onMapClick(mapX, mapY);
+    }
+  }, [isDragging, hasMoved, onMapClick, translate, scale, width, height]);
 
   // Zoom buttons
-  const handleZoomIn = () => setScale((s) => Math.min(MAX_ZOOM, s + ZOOM_STEP));
-  const handleZoomOut = () => setScale((s) => Math.max(MIN_ZOOM, s - ZOOM_STEP));
+  const handleZoomIn = () => {
+    const newScale = Math.min(MAX_ZOOM, scale + ZOOM_STEP * 2);
+    setScale(newScale);
+    setTranslate(clampTranslate(translate.x, translate.y, newScale));
+  };
+  
+  const handleZoomOut = () => {
+    const newScale = Math.max(MIN_ZOOM, scale - ZOOM_STEP * 2);
+    setScale(newScale);
+    setTranslate(clampTranslate(translate.x, translate.y, newScale));
+  };
+  
   const handleReset = () => {
     setScale(1);
     setTranslate({ x: 0, y: 0 });
   };
 
-  // Web-specific event handlers
+  // Web event handlers
   const webProps = Platform.OS === 'web' ? {
     onWheel: handleWheel,
     onMouseDown: handleMouseDown,
     onMouseMove: handleMouseMove,
     onMouseUp: handleMouseUp,
-    onMouseLeave: handleMouseUp,
-    onClick: handleClick,
-    onContextMenu: (e: any) => e.preventDefault(),
+    onMouseLeave: () => setIsDragging(false),
   } : {};
 
   return (
     <View 
       ref={containerRef}
-      style={[styles.container, { width, height }]}
+      style={[styles.container, { width, height, cursor: isDragging ? 'grabbing' : 'grab' }]}
       {...webProps}
     >
       {/* Transformed content */}
@@ -136,7 +159,7 @@ export const ZoomPanContainer: React.FC<ZoomPanContainerProps> = ({
             ],
           },
         ]}
-        pointerEvents="box-none"
+        pointerEvents="none"
       >
         {children}
       </View>
@@ -150,16 +173,16 @@ export const ZoomPanContainer: React.FC<ZoomPanContainerProps> = ({
         <TouchableOpacity style={styles.zoomBtn} onPress={handleZoomOut}>
           <Text style={styles.zoomBtnText}>−</Text>
         </TouchableOpacity>
-        {scale !== 1 && (
+        {(scale !== 1 || translate.x !== 0 || translate.y !== 0) && (
           <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
             <Text style={styles.resetBtnText}>↺</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Pan hint */}
+      {/* Hint */}
       <View style={styles.hint}>
-        <Text style={styles.hintText}>Scroll to zoom • Right-click drag to pan</Text>
+        <Text style={styles.hintText}>Scroll to zoom • Drag to pan • Click to build</Text>
       </View>
     </View>
   );
@@ -169,7 +192,6 @@ const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
     position: 'relative',
-    cursor: 'crosshair',
   },
   content: {
     position: 'absolute',
@@ -178,18 +200,20 @@ const styles = StyleSheet.create({
   },
   controls: {
     position: 'absolute',
-    bottom: 15,
-    left: 15,
+    bottom: 20,
+    left: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 8,
-    padding: 6,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    borderRadius: 10,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: COLORS.bgCardLight,
   },
   zoomBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.solanaPurple,
     justifyContent: 'center',
     alignItems: 'center',
@@ -197,41 +221,40 @@ const styles = StyleSheet.create({
   },
   zoomBtnText: {
     color: COLORS.text,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
   },
   zoomLevel: {
     color: COLORS.text,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    minWidth: 45,
+    minWidth: 50,
     textAlign: 'center',
   },
   resetBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.bgCardLight,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.bgCard,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
   },
   resetBtnText: {
     color: COLORS.text,
-    fontSize: 18,
+    fontSize: 20,
   },
   hint: {
     position: 'absolute',
-    bottom: 15,
-    right: 15,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    bottom: 20,
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   hintText: {
     color: COLORS.textMuted,
-    fontSize: 10,
+    fontSize: 11,
   },
 });
-

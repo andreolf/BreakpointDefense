@@ -169,7 +169,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
           height={GAME_HEIGHT}
           onMapClick={handleMapClick}
         >
-          <Lane width={GAME_WIDTH} height={GAME_HEIGHT} freezeActive={gameState.abilities.freeze.active} />
+          <Lane 
+            width={GAME_WIDTH} 
+            height={GAME_HEIGHT} 
+            freezeActive={gameState.abilities.freeze.active}
+            showBuildZones={true}
+            towers={gameState.towers.map(t => ({ x: t.x, y: t.y }))}
+          />
           
           {/* Base */}
           <BaseView hp={gameState.baseHp} maxHp={gameState.maxBaseHp} />
