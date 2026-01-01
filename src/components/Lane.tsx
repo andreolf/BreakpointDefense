@@ -76,11 +76,11 @@ export const Lane: React.FC<LaneProps> = ({
   
   const pathData = useMemo(() => generateSmoothPath(points), [points]);
   
-  // Build zone positions (offset from path)
+  // Build zone positions (CLEARLY OUTSIDE the path)
   const buildZones = useMemo(() => {
-    const samples = getPathSamplePoints(points, 30);
+    const samples = getPathSamplePoints(points, 24);
     const zones: { x: number; y: number; available: boolean }[] = [];
-    const offset = GAME_CONFIG.towerOffsetFromPath;
+    const offset = GAME_CONFIG.towerOffsetFromPath + 10; // Extra offset to be clearly outside
     
     for (let i = 1; i < samples.length - 1; i += 2) {
       const prev = samples[i - 1];

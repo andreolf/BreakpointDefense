@@ -7,10 +7,9 @@ import { Dimensions } from 'react-native';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // =============================================================================
-// LAYOUT - Wider panels for better UX
+// LAYOUT
 // =============================================================================
-export const SIDEBAR_WIDTH = 200;  // Right panel
-export const LEFT_PANEL_WIDTH = 0; // Remove left panel, use popup instead
+export const SIDEBAR_WIDTH = 220;
 export const GAME_WIDTH = SCREEN_WIDTH - SIDEBAR_WIDTH;
 export const GAME_HEIGHT = SCREEN_HEIGHT;
 
@@ -72,9 +71,9 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
   validator: {
     name: 'Validator',
     icon: '⚡',
-    description: 'Fast attacks, low damage',
+    description: 'Fast attacks',
     cost: 50,
-    rangeLevels: [70, 90, 115],
+    rangeLevels: [80, 100, 130],
     damage: [8, 14, 22],
     fireRate: [4, 5, 6],
     upgradeCost: [35, 70],
@@ -85,9 +84,9 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
   jupiter: {
     name: 'Jupiter',
     icon: '🪐',
-    description: 'Chain attacks to 2 enemies',
+    description: 'Chain to 2 enemies',
     cost: 80,
-    rangeLevels: [65, 85, 110],
+    rangeLevels: [75, 95, 120],
     damage: [15, 24, 36],
     fireRate: [1.5, 2, 2.5],
     upgradeCost: [50, 100],
@@ -102,9 +101,9 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
   tensor: {
     name: 'Tensor',
     icon: '💎',
-    description: 'Splash damage in area',
+    description: 'Splash damage',
     cost: 100,
-    rangeLevels: [60, 80, 100],
+    rangeLevels: [70, 90, 115],
     damage: [25, 42, 65],
     fireRate: [0.8, 1.1, 1.4],
     upgradeCost: [70, 130],
@@ -123,7 +122,6 @@ export type EnemyType = 'fud' | 'rugpull' | 'congestion';
 
 export interface EnemyConfig {
   name: string;
-  icon: string;
   hp: number;
   speed: number;
   reward: number;
@@ -136,35 +134,32 @@ export interface EnemyConfig {
 export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
   fud: {
     name: 'FUD',
-    icon: '😱',
     hp: 25,
-    speed: 60,
+    speed: 55,
     reward: 10,
     damage: 5,
     color: COLORS.enemyFud,
-    size: 15,
+    size: 16,
     spawnWeight: 60,
   },
   rugpull: {
     name: 'Rug Pull',
-    icon: '🧹',
     hp: 120,
-    speed: 24,
+    speed: 22,
     reward: 30,
     damage: 15,
     color: COLORS.enemyRugPull,
-    size: 20,
+    size: 22,
     spawnWeight: 25,
   },
   congestion: {
     name: 'Congestion',
-    icon: '🚧',
     hp: 300,
-    speed: 35,
+    speed: 32,
     reward: 100,
     damage: 30,
     color: COLORS.enemyCongestion,
-    size: 28,
+    size: 30,
     spawnWeight: 0,
   },
 };
@@ -174,13 +169,13 @@ export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
 // =============================================================================
 export const ABILITIES = {
   bomb: {
-    name: 'Network Purge',
+    name: 'Purge',
     icon: '💥',
     description: 'Kill all enemies',
     cooldown: 45,
   },
   freeze: {
-    name: 'Rate Limit',
+    name: 'Freeze',
     icon: '❄️',
     description: 'Slow enemies 5s',
     cooldown: 30,
@@ -233,15 +228,17 @@ export const GAME_CONFIG = {
   projectileSpeed: 300,
   projectileSize: 5,
   
-  towerOffsetFromPath: 45,
-  minDistanceBetweenTowers: 55,
+  // Tower placement - MUST be outside path
+  towerOffsetFromPath: 55,      // Minimum distance from path center
+  minDistanceBetweenTowers: 60,
   maxTowers: 20,
-  pathClickRadius: 70,  // How close to path you can click to place
+  pathClickRadius: 90,          // How far from path you can click
   
   maxTowerLevel: 3,
   maxRangeLevel: 3,
   
-  pathWidth: 28,
+  // Path is BIGGER now
+  pathWidth: 38,
 };
 
 // =============================================================================
@@ -254,24 +251,25 @@ export const BIOME = {
 };
 
 // =============================================================================
-// PATH
+// PATH - smoother S-curve
 // =============================================================================
 export const PATH_WAYPOINTS = [
-  { x: -0.05, y: 0.15 },
-  { x: 0.12, y: 0.15 },
-  { x: 0.25, y: 0.10 },
-  { x: 0.35, y: 0.25 },
-  { x: 0.30, y: 0.45 },
-  { x: 0.18, y: 0.55 },
-  { x: 0.15, y: 0.70 },
-  { x: 0.25, y: 0.82 },
-  { x: 0.45, y: 0.85 },
-  { x: 0.60, y: 0.75 },
-  { x: 0.70, y: 0.55 },
-  { x: 0.78, y: 0.35 },
-  { x: 0.88, y: 0.25 },
-  { x: 0.98, y: 0.40 },
-  { x: 1.05, y: 0.50 },
+  { x: -0.05, y: 0.12 },
+  { x: 0.08, y: 0.12 },
+  { x: 0.18, y: 0.08 },
+  { x: 0.30, y: 0.18 },
+  { x: 0.35, y: 0.35 },
+  { x: 0.28, y: 0.52 },
+  { x: 0.16, y: 0.62 },
+  { x: 0.14, y: 0.78 },
+  { x: 0.26, y: 0.88 },
+  { x: 0.48, y: 0.90 },
+  { x: 0.65, y: 0.80 },
+  { x: 0.75, y: 0.62 },
+  { x: 0.82, y: 0.42 },
+  { x: 0.92, y: 0.30 },
+  { x: 1.02, y: 0.38 },
+  { x: 1.08, y: 0.48 },
 ];
 
 export function getPathPoints(width: number, height: number) {

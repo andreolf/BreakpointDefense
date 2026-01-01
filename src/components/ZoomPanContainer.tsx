@@ -16,10 +16,10 @@ interface ZoomPanContainerProps {
   onMapClick?: (x: number, y: number) => void;
 }
 
-const MIN_ZOOM = 0.5;
-const MAX_ZOOM = 2.5;
+const MIN_ZOOM = 0.4;  // Can zoom out more to see full map
+const MAX_ZOOM = 2.0;
 const ZOOM_STEP = 0.1;
-const DRAG_THRESHOLD = 8; // Pixels moved before it's considered a drag
+const DRAG_THRESHOLD = 5; // Pixels moved before it's considered a drag
 
 export const ZoomPanContainer: React.FC<ZoomPanContainerProps> = ({
   children,
