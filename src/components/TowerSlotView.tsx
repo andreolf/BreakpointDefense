@@ -1,6 +1,6 @@
 /**
  * TowerSlotView Component
- * Renders tower slots and placed towers with Solana ecosystem theming
+ * Renders tower slots BESIDE the path with visible range indicators
  */
 
 import React from 'react';
@@ -29,223 +29,265 @@ export const TowerSlotView: React.FC<TowerSlotViewProps> = ({
   onPress,
   isSelected,
 }) => {
-  const size = GAME_CONFIG.slotRadius * 2;
   const tower = slot.tower;
   const config = tower ? TOWER_CONFIGS[tower.type] : null;
+  const slotSize = GAME_CONFIG.slotRadius * 2;
   
+  // Range indicator size (for towers)
+  const rangeSize = config ? config.range * 2 : 0;
+  
+  // Total container size needs to accommodate range indicator
+  const containerSize = tower && config ? Math.max(slotSize, rangeSize) : slotSize;
+  const offset = (containerSize - slotSize) / 2;
+
   return (
-    <TouchableOpacity
+    <View
       style={[
         styles.container,
         {
-          left: slot.x - GAME_CONFIG.slotRadius,
-          top: slot.y - GAME_CONFIG.slotRadius,
-          width: size,
-          height: size,
-          opacity: slot.locked ? 0.4 : 1,
+          left: slot.x - containerSize / 2,
+          top: slot.y - containerSize / 2,
+          width: containerSize,
+          height: containerSize,
+          opacity: slot.locked && !tower ? 0.3 : 1,
         },
       ]}
-      onPress={onPress}
-      disabled={slot.locked}
-      activeOpacity={0.7}
     >
-      <Svg width={size} height={size}>
-        <Defs>
-          {/* Empty slot gradient */}
-          <RadialGradient id="emptySlot" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={COLORS.bgCard} />
-            <Stop offset="100%" stopColor={COLORS.bgDark} />
-          </RadialGradient>
+      {/* Range indicator (always visible for placed towers) */}
+      {tower && config && (
+        <Svg
+          width={containerSize}
+          height={containerSize}
+          style={StyleSheet.absoluteFillObject}
+        >
+          <Defs>
+            <RadialGradient id={`range-${slot.index}`} cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor={config.color} stopOpacity="0" />
+              <Stop offset="70%" stopColor={config.color} stopOpacity="0.05" />
+              <Stop offset="90%" stopColor={config.color} stopOpacity="0.1" />
+              <Stop offset="100%" stopColor={config.color} stopOpacity="0.15" />
+            </RadialGradient>
+          </Defs>
           
-          {/* Tower gradient based on type */}
-          <RadialGradient id="towerGlow" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={config?.color || COLORS.solanaGreen} stopOpacity="0.6" />
-            <Stop offset="100%" stopColor={config?.color || COLORS.solanaGreen} stopOpacity="0" />
-          </RadialGradient>
-          
-          {/* Range indicator */}
-          <RadialGradient id="rangeGlow" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={COLORS.solanaGreen} stopOpacity="0" />
-            <Stop offset="80%" stopColor={COLORS.solanaGreen} stopOpacity="0.1" />
-            <Stop offset="100%" stopColor={COLORS.solanaGreen} stopOpacity="0.3" />
-          </RadialGradient>
-          
-          {/* Locked slot gradient */}
-          <LinearGradient id="lockedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor={COLORS.solanaPink} stopOpacity="0.2" />
-            <Stop offset="100%" stopColor={COLORS.bgDark} stopOpacity="0.8" />
-          </LinearGradient>
-        </Defs>
-        
-        {/* Selected range indicator */}
-        {isSelected && config && (
+          {/* Range circle fill */}
           <Circle
-            cx={size / 2}
-            cy={size / 2}
+            cx={containerSize / 2}
+            cy={containerSize / 2}
+            r={config.range}
+            fill={`url(#range-${slot.index})`}
+          />
+          
+          {/* Range circle border */}
+          <Circle
+            cx={containerSize / 2}
+            cy={containerSize / 2}
             r={config.range}
             fill="none"
             stroke={config.color}
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            opacity={0.5}
+            strokeWidth={isSelected ? 2 : 1}
+            strokeOpacity={isSelected ? 0.6 : 0.25}
+            strokeDasharray={isSelected ? "0" : "8 4"}
           />
+        </Svg>
+      )}
+      
+      {/* Touchable slot area */}
+      <TouchableOpacity
+        style={[
+          styles.slotTouchable,
+          {
+            left: offset,
+            top: offset,
+            width: slotSize,
+            height: slotSize,
+          },
+        ]}
+        onPress={onPress}
+        disabled={slot.locked && !tower}
+        activeOpacity={0.7}
+      >
+        <Svg width={slotSize} height={slotSize}>
+          <Defs>
+            {/* Empty slot gradient */}
+            <RadialGradient id={`emptySlot-${slot.index}`} cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor={COLORS.bgCard} />
+              <Stop offset="100%" stopColor={COLORS.bgDark} />
+            </RadialGradient>
+            
+            {/* Tower gradient based on type */}
+            <RadialGradient id={`towerGlow-${slot.index}`} cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor={config?.color || COLORS.solanaGreen} stopOpacity="0.8" />
+              <Stop offset="100%" stopColor={config?.color || COLORS.solanaGreen} stopOpacity="0" />
+            </RadialGradient>
+            
+            {/* Locked slot gradient */}
+            <LinearGradient id={`locked-${slot.index}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor={COLORS.solanaPink} stopOpacity="0.2" />
+              <Stop offset="100%" stopColor={COLORS.bgDark} stopOpacity="0.8" />
+            </LinearGradient>
+          </Defs>
+          
+          {slot.locked && !tower ? (
+            // Locked slot (X pattern)
+            <G>
+              <Circle
+                cx={slotSize / 2}
+                cy={slotSize / 2}
+                r={GAME_CONFIG.slotRadius - 2}
+                fill={`url(#locked-${slot.index})`}
+                stroke={COLORS.solanaPink}
+                strokeWidth={1.5}
+                strokeOpacity={0.4}
+              />
+              <Rect
+                x={slotSize / 2 - 6}
+                y={slotSize / 2 - 1.5}
+                width={12}
+                height={3}
+                fill={COLORS.solanaPink}
+                opacity={0.5}
+                transform={`rotate(45 ${slotSize/2} ${slotSize/2})`}
+              />
+              <Rect
+                x={slotSize / 2 - 6}
+                y={slotSize / 2 - 1.5}
+                width={12}
+                height={3}
+                fill={COLORS.solanaPink}
+                opacity={0.5}
+                transform={`rotate(-45 ${slotSize/2} ${slotSize/2})`}
+              />
+            </G>
+          ) : tower && config ? (
+            // Tower placed
+            <G>
+              {/* Tower glow */}
+              <Circle
+                cx={slotSize / 2}
+                cy={slotSize / 2}
+                r={GAME_CONFIG.slotRadius + 3}
+                fill={`url(#towerGlow-${slot.index})`}
+              />
+              
+              {/* Tower base (dark circle) */}
+              <Circle
+                cx={slotSize / 2}
+                cy={slotSize / 2}
+                r={GAME_CONFIG.slotRadius - 2}
+                fill={COLORS.bgDark}
+                stroke={config.color}
+                strokeWidth={3}
+              />
+              
+              {/* Tower center (hexagon shape) */}
+              <Polygon
+                points={getHexagonPoints(slotSize / 2, slotSize / 2, GAME_CONFIG.slotRadius - 10)}
+                fill={config.color}
+                opacity={0.9}
+              />
+              
+              {/* Inner hexagon */}
+              <Polygon
+                points={getHexagonPoints(slotSize / 2, slotSize / 2, GAME_CONFIG.slotRadius - 16)}
+                fill={COLORS.bgDark}
+                opacity={0.7}
+              />
+              
+              {/* Level indicators (dots) */}
+              {[...Array(tower.level)].map((_, i) => {
+                const angle = (i * (2 * Math.PI / 3)) - Math.PI / 2;
+                const dotX = slotSize / 2 + Math.cos(angle) * (GAME_CONFIG.slotRadius - 4);
+                const dotY = slotSize / 2 + Math.sin(angle) * (GAME_CONFIG.slotRadius - 4);
+                return (
+                  <Circle
+                    key={i}
+                    cx={dotX}
+                    cy={dotY}
+                    r={3}
+                    fill={COLORS.solanaGreen}
+                    stroke={COLORS.bgDark}
+                    strokeWidth={1}
+                  />
+                );
+              })}
+              
+              {/* Selection ring */}
+              {isSelected && (
+                <Circle
+                  cx={slotSize / 2}
+                  cy={slotSize / 2}
+                  r={GAME_CONFIG.slotRadius + 1}
+                  fill="none"
+                  stroke={COLORS.text}
+                  strokeWidth={2}
+                />
+              )}
+            </G>
+          ) : (
+            // Empty slot (available for placement)
+            <G>
+              {/* Slot background */}
+              <Circle
+                cx={slotSize / 2}
+                cy={slotSize / 2}
+                r={GAME_CONFIG.slotRadius - 2}
+                fill={`url(#emptySlot-${slot.index})`}
+                stroke={COLORS.solanaPurple}
+                strokeWidth={2}
+                strokeDasharray="6 3"
+                strokeOpacity={0.7}
+              />
+              
+              {/* Plus icon */}
+              <Rect
+                x={slotSize / 2 - 6}
+                y={slotSize / 2 - 1.5}
+                width={12}
+                height={3}
+                fill={COLORS.solanaPurple}
+                opacity={0.7}
+              />
+              <Rect
+                x={slotSize / 2 - 1.5}
+                y={slotSize / 2 - 6}
+                width={3}
+                height={12}
+                fill={COLORS.solanaPurple}
+                opacity={0.7}
+              />
+              
+              {/* Selection ring */}
+              {isSelected && (
+                <Circle
+                  cx={slotSize / 2}
+                  cy={slotSize / 2}
+                  r={GAME_CONFIG.slotRadius + 1}
+                  fill="none"
+                  stroke={COLORS.solanaGreen}
+                  strokeWidth={2}
+                />
+              )}
+            </G>
+          )}
+        </Svg>
+        
+        {/* Tower icon */}
+        {tower && config && (
+          <View style={styles.towerIconContainer}>
+            <Text style={styles.towerIcon}>{config.icon}</Text>
+          </View>
         )}
         
-        {slot.locked ? (
-          // Locked slot (X pattern)
-          <G>
-            <Circle
-              cx={size / 2}
-              cy={size / 2}
-              r={GAME_CONFIG.slotRadius - 2}
-              fill="url(#lockedGradient)"
-              stroke={COLORS.solanaPink}
-              strokeWidth={2}
-              strokeOpacity={0.5}
-            />
-            <Rect
-              x={size / 2 - 8}
-              y={size / 2 - 2}
-              width={16}
-              height={4}
-              fill={COLORS.solanaPink}
-              opacity={0.6}
-              transform={`rotate(45 ${size/2} ${size/2})`}
-            />
-            <Rect
-              x={size / 2 - 8}
-              y={size / 2 - 2}
-              width={16}
-              height={4}
-              fill={COLORS.solanaPink}
-              opacity={0.6}
-              transform={`rotate(-45 ${size/2} ${size/2})`}
-            />
-          </G>
-        ) : tower && config ? (
-          // Tower placed
-          <G>
-            {/* Tower glow */}
-            <Circle
-              cx={size / 2}
-              cy={size / 2}
-              r={GAME_CONFIG.slotRadius + 5}
-              fill="url(#towerGlow)"
-            />
-            
-            {/* Tower base */}
-            <Circle
-              cx={size / 2}
-              cy={size / 2}
-              r={GAME_CONFIG.slotRadius - 2}
-              fill={COLORS.bgCard}
-              stroke={config.color}
-              strokeWidth={3}
-            />
-            
-            {/* Tower center (hexagon shape) */}
-            <Polygon
-              points={getHexagonPoints(size / 2, size / 2, GAME_CONFIG.slotRadius - 8)}
-              fill={config.color}
-              opacity={0.8}
-            />
-            
-            {/* Level indicators (dots around edge) */}
-            {[...Array(tower.level)].map((_, i) => {
-              const angle = (i * (2 * Math.PI / 3)) - Math.PI / 2;
-              const dotX = size / 2 + Math.cos(angle) * (GAME_CONFIG.slotRadius - 5);
-              const dotY = size / 2 + Math.sin(angle) * (GAME_CONFIG.slotRadius - 5);
-              return (
-                <Circle
-                  key={i}
-                  cx={dotX}
-                  cy={dotY}
-                  r={4}
-                  fill={COLORS.solanaGreen}
-                  stroke={COLORS.bgDark}
-                  strokeWidth={1}
-                />
-              );
-            })}
-            
-            {/* Selection indicator */}
-            {isSelected && (
-              <Circle
-                cx={size / 2}
-                cy={size / 2}
-                r={GAME_CONFIG.slotRadius + 2}
-                fill="none"
-                stroke={COLORS.solanaGreen}
-                strokeWidth={3}
-                strokeDasharray="10 5"
-              />
-            )}
-          </G>
-        ) : (
-          // Empty slot
-          <G>
-            {/* Slot background */}
-            <Circle
-              cx={size / 2}
-              cy={size / 2}
-              r={GAME_CONFIG.slotRadius - 2}
-              fill="url(#emptySlot)"
-              stroke={COLORS.solanaPurple}
-              strokeWidth={2}
-              strokeDasharray="8 4"
-              strokeOpacity={0.6}
-            />
-            
-            {/* Plus icon */}
-            <Rect
-              x={size / 2 - 8}
-              y={size / 2 - 2}
-              width={16}
-              height={4}
-              fill={COLORS.solanaPurple}
-              opacity={0.6}
-            />
-            <Rect
-              x={size / 2 - 2}
-              y={size / 2 - 8}
-              width={4}
-              height={16}
-              fill={COLORS.solanaPurple}
-              opacity={0.6}
-            />
-            
-            {/* Selection indicator */}
-            {isSelected && (
-              <Circle
-                cx={size / 2}
-                cy={size / 2}
-                r={GAME_CONFIG.slotRadius + 2}
-                fill="none"
-                stroke={COLORS.solanaGreen}
-                strokeWidth={3}
-              />
-            )}
-          </G>
+        {/* Level badge */}
+        {tower && config && (
+          <View style={[styles.levelBadge, { backgroundColor: config.color }]}>
+            <Text style={styles.levelText}>
+              {tower.level === GAME_CONFIG.maxTowerLevel ? '★' : `L${tower.level}`}
+            </Text>
+          </View>
         )}
-      </Svg>
-      
-      {/* Tower icon and level badge */}
-      {tower && config && (
-        <View style={styles.towerInfo}>
-          <Text style={styles.towerIcon}>{config.icon}</Text>
-          {tower.level < GAME_CONFIG.maxTowerLevel && (
-            <View style={[styles.levelBadge, { backgroundColor: config.color }]}>
-              <Text style={styles.levelText}>L{tower.level}</Text>
-            </View>
-          )}
-          {tower.level === GAME_CONFIG.maxTowerLevel && (
-            <View style={[styles.maxBadge]}>
-              <Text style={styles.maxText}>MAX</Text>
-            </View>
-          )}
-        </View>
-      )}
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </View>
   );
 };
 
@@ -264,43 +306,34 @@ function getHexagonPoints(cx: number, cy: number, r: number): string {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
+  },
+  slotTouchable: {
+    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  towerInfo: {
+  towerIconContainer: {
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
   towerIcon: {
-    fontSize: 18,
+    fontSize: 16,
     textAlign: 'center',
   },
   levelBadge: {
     position: 'absolute',
-    bottom: -8,
-    right: -8,
+    bottom: 2,
+    right: 2,
     paddingHorizontal: 4,
     paddingVertical: 1,
-    borderRadius: 4,
+    borderRadius: 6,
+    minWidth: 18,
+    alignItems: 'center',
   },
   levelText: {
     color: COLORS.bgDark,
     fontSize: 8,
-    fontWeight: 'bold',
-  },
-  maxBadge: {
-    position: 'absolute',
-    bottom: -8,
-    right: -12,
-    backgroundColor: COLORS.solanaGreen,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  maxText: {
-    color: COLORS.bgDark,
-    fontSize: 7,
     fontWeight: 'bold',
   },
 });

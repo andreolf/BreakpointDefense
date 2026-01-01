@@ -1,6 +1,6 @@
 /**
  * EnemyView Component
- * Renders crypto-themed enemies (FUD, Rug Pulls, Network Congestion)
+ * Renders BIGGER crypto-themed enemies clearly on the path
  */
 
 import React from 'react';
@@ -27,6 +27,7 @@ export const EnemyView: React.FC<EnemyViewProps> = ({ enemy }) => {
   const config = ENEMY_CONFIGS[enemy.type];
   const hpPercent = enemy.hp / enemy.maxHp;
   const size = enemy.size;
+  const viewSize = size * 2.2; // Extra space for effects
   
   // HP bar color
   const hpColor = hpPercent > 0.6 
@@ -40,61 +41,78 @@ export const EnemyView: React.FC<EnemyViewProps> = ({ enemy }) => {
       style={[
         styles.container,
         {
-          left: enemy.x - size,
-          top: enemy.y - size,
-          width: size * 2,
-          height: size * 2 + 12,
+          left: enemy.x - viewSize / 2,
+          top: enemy.y - viewSize / 2,
+          width: viewSize,
+          height: viewSize + 16, // Extra for HP bar
         },
       ]}
     >
-      <Svg width={size * 2} height={size * 2}>
+      <Svg width={viewSize} height={viewSize}>
         <Defs>
           {/* Enemy glow */}
           <RadialGradient id={`glow-${enemy.id}`} cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={config.color} stopOpacity="0.5" />
+            <Stop offset="0%" stopColor={config.color} stopOpacity="0.6" />
+            <Stop offset="60%" stopColor={config.color} stopOpacity="0.2" />
             <Stop offset="100%" stopColor={config.color} stopOpacity="0" />
           </RadialGradient>
           
           {/* Enemy body gradient */}
           <RadialGradient id={`body-${enemy.id}`} cx="30%" cy="30%" r="70%">
-            <Stop offset="0%" stopColor={config.color} />
-            <Stop offset="100%" stopColor={darkenColor(config.color, 0.4)} />
+            <Stop offset="0%" stopColor={lightenColor(config.color, 0.3)} />
+            <Stop offset="100%" stopColor={config.color} />
           </RadialGradient>
           
-          {/* Danger indicator for miniboss */}
-          <LinearGradient id="dangerPulse" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor={COLORS.enemyCongestion} />
-            <Stop offset="50%" stopColor={COLORS.solanaPink} />
-            <Stop offset="100%" stopColor={COLORS.enemyCongestion} />
-          </LinearGradient>
+          {/* Shadow gradient */}
+          <RadialGradient id={`shadow-${enemy.id}`} cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor="#000" stopOpacity="0.4" />
+            <Stop offset="100%" stopColor="#000" stopOpacity="0" />
+          </RadialGradient>
         </Defs>
+        
+        {/* Shadow under enemy */}
+        <Circle
+          cx={viewSize / 2}
+          cy={viewSize / 2 + size * 0.3}
+          r={size * 0.7}
+          fill={`url(#shadow-${enemy.id})`}
+        />
         
         {/* Glow effect */}
         <Circle
-          cx={size}
-          cy={size}
-          r={size + 5}
+          cx={viewSize / 2}
+          cy={viewSize / 2}
+          r={size + 6}
           fill={`url(#glow-${enemy.id})`}
         />
         
         {/* Enemy type specific shape */}
         {enemy.type === 'fud' && (
-          // FUD: Jagged speech bubble / fear icon
           <G>
-            {/* Outer spiky shape */}
-            <Polygon
-              points={getFudShape(size, size, size * 0.9)}
+            {/* Outer body - jagged/scary shape */}
+            <Circle
+              cx={viewSize / 2}
+              cy={viewSize / 2}
+              r={size}
               fill={`url(#body-${enemy.id})`}
-              stroke={COLORS.bgDark}
-              strokeWidth={1}
+              stroke={darkenColor(config.color, 0.3)}
+              strokeWidth={2}
             />
-            {/* Eyes (worried) */}
-            <Circle cx={size - 4} cy={size - 2} r={3} fill={COLORS.bgDark} />
-            <Circle cx={size + 4} cy={size - 2} r={3} fill={COLORS.bgDark} />
+            
+            {/* Face - worried eyes */}
+            <Circle cx={viewSize / 2 - size * 0.25} cy={viewSize / 2 - size * 0.1} r={size * 0.18} fill="#000" />
+            <Circle cx={viewSize / 2 + size * 0.25} cy={viewSize / 2 - size * 0.1} r={size * 0.18} fill="#000" />
+            
+            {/* Eye highlights */}
+            <Circle cx={viewSize / 2 - size * 0.3} cy={viewSize / 2 - size * 0.15} r={size * 0.06} fill="#fff" />
+            <Circle cx={viewSize / 2 + size * 0.2} cy={viewSize / 2 - size * 0.15} r={size * 0.06} fill="#fff" />
+            
             {/* Worried mouth */}
             <Path
-              d={`M ${size - 4} ${size + 5} Q ${size} ${size + 2} ${size + 4} ${size + 5}`}
-              stroke={COLORS.bgDark}
+              d={`M ${viewSize / 2 - size * 0.3} ${viewSize / 2 + size * 0.35} 
+                  Q ${viewSize / 2} ${viewSize / 2 + size * 0.15} 
+                  ${viewSize / 2 + size * 0.3} ${viewSize / 2 + size * 0.35}`}
+              stroke="#000"
               strokeWidth={2}
               fill="none"
             />
@@ -102,83 +120,102 @@ export const EnemyView: React.FC<EnemyViewProps> = ({ enemy }) => {
         )}
         
         {enemy.type === 'rugpull' && (
-          // Rug Pull: Carpet/rug shape being pulled
           <G>
-            {/* Rug base (rectangle with wavy edge) */}
+            {/* Rug shape - rounded rectangle */}
             <Rect
-              x={size - size * 0.8}
-              y={size - size * 0.5}
-              width={size * 1.6}
-              height={size}
-              rx={3}
+              x={viewSize / 2 - size}
+              y={viewSize / 2 - size * 0.6}
+              width={size * 2}
+              height={size * 1.2}
+              rx={size * 0.2}
               fill={`url(#body-${enemy.id})`}
-              stroke={COLORS.bgDark}
-              strokeWidth={1}
+              stroke={darkenColor(config.color, 0.3)}
+              strokeWidth={2}
             />
-            {/* Carpet pattern */}
-            <Rect
-              x={size - size * 0.6}
-              y={size - size * 0.3}
-              width={size * 1.2}
-              height={size * 0.6}
-              rx={2}
+            
+            {/* Carpet pattern stripes */}
+            {[...Array(3)].map((_, i) => (
+              <Rect
+                key={i}
+                x={viewSize / 2 - size * 0.7 + i * size * 0.5}
+                y={viewSize / 2 - size * 0.4}
+                width={size * 0.3}
+                height={size * 0.8}
+                rx={2}
+                fill={darkenColor(config.color, 0.2)}
+              />
+            ))}
+            
+            {/* $ symbol */}
+            <Circle
+              cx={viewSize / 2}
+              cy={viewSize / 2}
+              r={size * 0.35}
               fill={darkenColor(config.color, 0.3)}
             />
-            {/* "Pull" hand icon */}
-            <Circle cx={size + size * 0.5} cy={size - size * 0.3} r={4} fill={COLORS.text} opacity={0.8} />
-            {/* $ symbol */}
-            <G>
-              <Rect x={size - 1.5} y={size - 4} width={3} height={8} fill={COLORS.text} opacity={0.9} />
-              <Rect x={size - 4} y={size - 2} width={8} height={2} fill={COLORS.text} opacity={0.9} />
-              <Rect x={size - 4} y={size + 1} width={8} height={2} fill={COLORS.text} opacity={0.9} />
-            </G>
+            <Path
+              d={`M ${viewSize / 2} ${viewSize / 2 - size * 0.25} 
+                  L ${viewSize / 2} ${viewSize / 2 + size * 0.25}`}
+              stroke="#fff"
+              strokeWidth={3}
+              strokeLinecap="round"
+            />
+            <Path
+              d={`M ${viewSize / 2 - size * 0.15} ${viewSize / 2 - size * 0.1}
+                  Q ${viewSize / 2 + size * 0.15} ${viewSize / 2 - size * 0.1}
+                  ${viewSize / 2 - size * 0.15} ${viewSize / 2 + size * 0.1}`}
+              stroke="#fff"
+              strokeWidth={2}
+              fill="none"
+            />
           </G>
         )}
         
         {enemy.type === 'congestion' && (
-          // Network Congestion: Warning triangle / traffic jam
           <G>
-            {/* Outer danger triangle */}
+            {/* Warning triangle */}
             <Polygon
-              points={getTrianglePoints(size, size, size * 0.95)}
+              points={getTrianglePoints(viewSize / 2, viewSize / 2, size)}
               fill={`url(#body-${enemy.id})`}
-              stroke={COLORS.bgDark}
-              strokeWidth={2}
+              stroke={darkenColor(config.color, 0.3)}
+              strokeWidth={3}
             />
+            
             {/* Inner triangle */}
             <Polygon
-              points={getTrianglePoints(size, size, size * 0.7)}
-              fill={darkenColor(config.color, 0.2)}
+              points={getTrianglePoints(viewSize / 2, viewSize / 2, size * 0.7)}
+              fill={darkenColor(config.color, 0.15)}
             />
+            
             {/* Exclamation mark */}
             <Rect
-              x={size - 2}
-              y={size - size * 0.3}
-              width={4}
-              height={size * 0.35}
-              rx={2}
-              fill={COLORS.bgDark}
+              x={viewSize / 2 - size * 0.08}
+              y={viewSize / 2 - size * 0.35}
+              width={size * 0.16}
+              height={size * 0.4}
+              rx={size * 0.08}
+              fill="#000"
             />
-            <Circle cx={size} cy={size + size * 0.25} r={3} fill={COLORS.bgDark} />
+            <Circle cx={viewSize / 2} cy={viewSize / 2 + size * 0.25} r={size * 0.1} fill="#000" />
             
-            {/* Pulsing danger rings */}
+            {/* Danger pulse rings */}
             <Circle
-              cx={size}
-              cy={size}
+              cx={viewSize / 2}
+              cy={viewSize / 2}
               r={size + 8}
               fill="none"
               stroke={config.color}
               strokeWidth={2}
-              strokeOpacity={0.3}
-              strokeDasharray="5 5"
+              strokeOpacity={0.4}
+              strokeDasharray="6 4"
             />
           </G>
         )}
       </Svg>
       
-      {/* HP Bar */}
+      {/* HP Bar - larger and more visible */}
       <View style={styles.hpBarContainer}>
-        <View style={[styles.hpBarBg]}>
+        <View style={styles.hpBarBg}>
           <View
             style={[
               styles.hpBarFill,
@@ -191,27 +228,13 @@ export const EnemyView: React.FC<EnemyViewProps> = ({ enemy }) => {
         </View>
       </View>
       
-      {/* Enemy icon (emoji) */}
-      <View style={styles.iconContainer}>
-        <Text style={styles.icon}>{config.icon}</Text>
+      {/* Enemy icon/emoji overlay */}
+      <View style={[styles.iconContainer, { top: viewSize * 0.35 }]}>
+        <Text style={[styles.icon, { fontSize: size * 0.7 }]}>{config.icon}</Text>
       </View>
     </View>
   );
 };
-
-// Generate FUD shape (spiky/jagged circle for fear)
-function getFudShape(cx: number, cy: number, r: number): string {
-  const points = [];
-  const spikes = 8;
-  for (let i = 0; i < spikes * 2; i++) {
-    const angle = (i * Math.PI / spikes) - Math.PI / 2;
-    const radius = i % 2 === 0 ? r : r * 0.6;
-    const x = cx + radius * Math.cos(angle);
-    const y = cy + radius * Math.sin(angle);
-    points.push(`${x},${y}`);
-  }
-  return points.join(' ');
-}
 
 // Generate triangle points for congestion enemy
 function getTrianglePoints(cx: number, cy: number, r: number): string {
@@ -223,6 +246,15 @@ function getTrianglePoints(cx: number, cy: number, r: number): string {
     points.push(`${x},${y}`);
   }
   return points.join(' ');
+}
+
+// Lighten a hex color
+function lightenColor(hex: string, amount: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.min(255, ((num >> 16) & 255) + 255 * amount);
+  const g = Math.min(255, ((num >> 8) & 255) + 255 * amount);
+  const b = Math.min(255, (num & 255) + 255 * amount);
+  return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
 }
 
 // Darken a hex color
@@ -240,31 +272,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   hpBarContainer: {
-    marginTop: 2,
     width: '100%',
     alignItems: 'center',
+    marginTop: 2,
   },
   hpBarBg: {
-    width: '80%',
-    height: 4,
-    backgroundColor: COLORS.bgDark,
-    borderRadius: 2,
+    width: '85%',
+    height: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 3,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.bgCard,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   hpBarFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 3,
   },
   iconContainer: {
     position: 'absolute',
-    top: '35%',
     alignItems: 'center',
     justifyContent: 'center',
   },
   icon: {
-    fontSize: 14,
     textAlign: 'center',
   },
 });

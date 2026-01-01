@@ -1,17 +1,16 @@
 /**
  * Game Engine
  * Core game loop logic with S-curve path following
+ * Towers are positioned BESIDE the path, not ON it
  */
 
 import { GameState, Enemy, Tower, Projectile, TowerSlot } from './types';
 import {
-  GAME_WIDTH,
-  GAME_HEIGHT,
   TOWER_CONFIGS,
   ENEMY_CONFIGS,
   BIOME,
   GAME_CONFIG,
-  TOWER_SLOT_POSITIONS,
+  TOWER_SLOT_CONFIGS,
   getPathPoints,
   TowerType,
   EnemyType,
@@ -70,6 +69,31 @@ export function getPositionAlongPath(
 }
 
 /**
+ * Get the direction (tangent) of the path at a given progress
+ */
+function getPathDirection(
+  progress: number,
+  width: number,
+  height: number
+): { x: number; y: number } {
+  const delta = 0.01;
+  const p1 = getPositionAlongPath(Math.max(0, progress - delta), width, height);
+  const p2 = getPositionAlongPath(Math.min(1, progress + delta), width, height);
+  
+  return normalize({
+    x: p2.x - p1.x,
+    y: p2.y - p1.y,
+  });
+}
+
+/**
+ * Get perpendicular vector (for placing towers beside path)
+ */
+function getPerpendicular(dir: { x: number; y: number }): { x: number; y: number } {
+  return { x: -dir.y, y: dir.x };
+}
+
+/**
  * Calculate total path length in pixels
  */
 function calculatePathLength(width: number, height: number): number {
@@ -86,21 +110,30 @@ function calculatePathLength(width: number, height: number): number {
 // ============================================
 
 /**
- * Creates the initial game state with slots positioned along the path
+ * Creates the initial game state with slots positioned BESIDE the path
  */
 export function createInitialState(width: number, height: number): GameState {
   const slots: TowerSlot[] = [];
   
-  // Create tower slots along the path
-  for (let i = 0; i < TOWER_SLOT_POSITIONS.length; i++) {
-    const pathProgress = TOWER_SLOT_POSITIONS[i];
-    const pos = getPositionAlongPath(pathProgress, width, height);
+  // Create tower slots BESIDE the path (not on it)
+  for (let i = 0; i < TOWER_SLOT_CONFIGS.length; i++) {
+    const config = TOWER_SLOT_CONFIGS[i];
+    const pathPos = getPositionAlongPath(config.pathProgress, width, height);
+    const pathDir = getPathDirection(config.pathProgress, width, height);
+    const perp = getPerpendicular(pathDir);
+    
+    // Offset the slot position to the side of the path
+    const offset = GAME_CONFIG.towerOffsetFromPath;
+    const sideMultiplier = config.side === 'top' ? -1 : 1;
+    
+    const slotX = pathPos.x + perp.x * offset * sideMultiplier;
+    const slotY = pathPos.y + perp.y * offset * sideMultiplier;
     
     slots.push({
       index: i,
-      x: pos.x,
-      y: pos.y,
-      pathProgress,
+      x: slotX,
+      y: slotY,
+      pathProgress: config.pathProgress,
       tower: null,
       locked: false,
     });
@@ -404,7 +437,7 @@ function updateProjectiles(state: GameState, deltaTime: number): GameState {
       if (config.special === 'chain' && config.chainCount) {
         const chainTargets = updatedEnemies
           .filter(e => e.id !== target.id)
-          .filter(e => distance({ x: target.x, y: target.y }, { x: e.x, y: e.y }) <= (config.chainRadius || 80))
+          .filter(e => distance({ x: target.x, y: target.y }, { x: e.x, y: e.y }) <= (config.chainRadius || 70))
           .slice(0, config.chainCount);
         
         for (const chainTarget of chainTargets) {

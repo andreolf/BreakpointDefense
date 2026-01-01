@@ -74,6 +74,10 @@ export const COLORS = {
   hpGood: '#14F195',
   hpMedium: '#FFD700',
   hpLow: '#FF4444',
+  
+  // Range indicator
+  rangeIndicator: 'rgba(153, 69, 255, 0.15)',
+  rangeBorder: 'rgba(153, 69, 255, 0.4)',
 };
 
 // =============================================================================
@@ -107,7 +111,7 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
     description: 'High TPS attacks. Fast fire rate, consistent damage.',
     icon: '⚡',
     cost: 50,
-    range: 120,
+    range: 100,  // Smaller range for balance
     damage: [8, 12, 18],
     fireRate: [4, 5, 6],
     upgradeCost: [40, 80],
@@ -120,7 +124,7 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
     description: 'Routes damage to multiple targets. Chains to nearby enemies.',
     icon: '🪐',
     cost: 80,
-    range: 100,
+    range: 90,
     damage: [15, 22, 32],
     fireRate: [1.5, 1.8, 2.2],
     upgradeCost: [60, 120],
@@ -128,7 +132,7 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
     projectileColor: COLORS.chain,
     special: 'chain',
     chainCount: 2,
-    chainRadius: 80,
+    chainRadius: 70,
     chainDamageReduction: 0.5,
   },
   tensor: {
@@ -137,14 +141,14 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
     description: 'NFT floor sweeper. Area damage on impact.',
     icon: '💎',
     cost: 100,
-    range: 90,
+    range: 80,
     damage: [25, 40, 60],
     fireRate: [0.8, 1.0, 1.2],
     upgradeCost: [80, 150],
     color: COLORS.towerTensor,
     projectileColor: COLORS.solanaPink,
     special: 'splash',
-    splashRadius: 50,
+    splashRadius: 45,
   },
 };
 
@@ -162,7 +166,7 @@ export interface EnemyConfig {
   reward: number;          // SOL reward on kill
   damage: number;          // Damage to base
   color: string;
-  size: number;
+  size: number;            // INCREASED sizes
   spawnWeight: number;     // Probability weight
 }
 
@@ -172,11 +176,11 @@ export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
     description: 'Fear, Uncertainty, Doubt. Fast but weak.',
     icon: '😱',
     hp: 25,
-    speed: 90,
+    speed: 80,
     reward: 10,
     damage: 5,
     color: COLORS.enemyFud,
-    size: 14,
+    size: 18,              // Increased from 14
     spawnWeight: 60,
   },
   rugpull: {
@@ -184,11 +188,11 @@ export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
     description: 'Slow but tanky scam attempt.',
     icon: '🧹',
     hp: 120,
-    speed: 35,
+    speed: 30,
     reward: 30,
     damage: 15,
     color: COLORS.enemyRugPull,
-    size: 22,
+    size: 26,              // Increased from 22
     spawnWeight: 25,
   },
   congestion: {
@@ -196,11 +200,11 @@ export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
     description: 'Mini-boss. Heavy traffic clogging the network.',
     icon: '🚧',
     hp: 300,
-    speed: 50,
+    speed: 45,
     reward: 100,
     damage: 30,
     color: COLORS.enemyCongestion,
-    size: 30,
+    size: 36,              // Increased from 30
     spawnWeight: 0, // Only spawned by timer
   },
 };
@@ -256,14 +260,18 @@ export const GAME_CONFIG = {
   timeMarkerSpeed: 8,           // Pixels per second
   
   // Projectiles
-  projectileSpeed: 400,         // Pixels per second
-  projectileSize: 6,
+  projectileSpeed: 350,         // Pixels per second
+  projectileSize: 5,
   
   // Tower slots
-  slotRadius: 28,
+  slotRadius: 24,               // Tower slot visual size
+  towerOffsetFromPath: 55,      // How far towers are placed from path center
   
   // Max tower level
   maxTowerLevel: 3,
+  
+  // Path width for rendering
+  pathWidth: 32,
 };
 
 // =============================================================================
@@ -291,19 +299,19 @@ export interface PathPoint {
   y: number;  // Percentage of game height (0-1)
 }
 
-// S-curve path from left to right
+// S-curve path from left to right - enemies walk ON this path
 export const PATH_WAYPOINTS: PathPoint[] = [
   { x: -0.05, y: 0.3 },   // Start off-screen left
-  { x: 0.15, y: 0.3 },    // Enter
-  { x: 0.25, y: 0.25 },   // Curve up
-  { x: 0.35, y: 0.15 },   // Top of first curve
-  { x: 0.45, y: 0.25 },   // Coming down
+  { x: 0.12, y: 0.3 },    // Enter
+  { x: 0.22, y: 0.22 },   // Curve up
+  { x: 0.35, y: 0.12 },   // Top of first curve
+  { x: 0.48, y: 0.25 },   // Coming down
   { x: 0.55, y: 0.5 },    // Middle
-  { x: 0.65, y: 0.75 },   // Bottom of S
-  { x: 0.75, y: 0.85 },   // Deep bottom
-  { x: 0.85, y: 0.75 },   // Coming back up
-  { x: 0.95, y: 0.5 },    // Approach base
-  { x: 1.05, y: 0.5 },    // Base position (off-screen right)
+  { x: 0.62, y: 0.75 },   // Bottom of S
+  { x: 0.75, y: 0.88 },   // Deep bottom
+  { x: 0.88, y: 0.72 },   // Coming back up
+  { x: 0.98, y: 0.5 },    // Approach base
+  { x: 1.08, y: 0.5 },    // Base position (off-screen right)
 ];
 
 // Convert percentage points to actual coordinates
@@ -314,8 +322,27 @@ export function getPathPoints(width: number, height: number): { x: number; y: nu
   }));
 }
 
-// Tower slot positions along the path (as path progress 0-1)
-export const TOWER_SLOT_POSITIONS = [0.12, 0.22, 0.32, 0.42, 0.52, 0.62, 0.72, 0.82, 0.92];
+// =============================================================================
+// TOWER SLOT POSITIONS - BESIDE THE PATH (not on it)
+// Each slot has a path progress (0-1) and a side (top/bottom of path)
+// =============================================================================
+export interface TowerSlotConfig {
+  pathProgress: number;  // Where along the path (0-1)
+  side: 'top' | 'bottom'; // Which side of the path
+}
+
+// Tower slots positioned BESIDE the path, alternating sides
+export const TOWER_SLOT_CONFIGS: TowerSlotConfig[] = [
+  { pathProgress: 0.10, side: 'bottom' },
+  { pathProgress: 0.18, side: 'top' },
+  { pathProgress: 0.28, side: 'bottom' },
+  { pathProgress: 0.38, side: 'top' },
+  { pathProgress: 0.48, side: 'bottom' },
+  { pathProgress: 0.58, side: 'top' },
+  { pathProgress: 0.68, side: 'bottom' },
+  { pathProgress: 0.78, side: 'top' },
+  { pathProgress: 0.88, side: 'bottom' },
+];
 
 // =============================================================================
 // SOLANA LOGOS & ICONS (SVG paths)
