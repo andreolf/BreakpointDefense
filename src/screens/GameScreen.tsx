@@ -1,19 +1,19 @@
 /**
  * GameScreen
- * Main game screen with tower defense gameplay and sidebar
+ * Main game - tap anywhere along the path to place towers!
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, StyleSheet, Dimensions, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Dimensions, Text, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 import { SafeArea } from '../components/SafeArea';
-import { GameState, TowerSlot, GameSettings } from '../game/types';
-import { TowerType, GAME_CONFIG } from '../game/config';
+import { GameState, Tower, GameSettings } from '../game/types';
+import { TowerType, GAME_CONFIG, TOWER_CONFIGS } from '../game/config';
 import {
   createInitialState,
   updateGame,
-  placeTower,
+  placeTowerAt,
+  canPlaceTowerAt,
   upgradeTower,
-  canPlaceTower,
   canUpgradeTower,
   resetSpawnTimers,
 } from '../game/engine';
@@ -22,7 +22,7 @@ import { useGameLoop } from '../hooks/useGameLoop';
 import { useHaptics } from '../hooks/useHaptics';
 import { useSound } from '../hooks/useSound';
 import { Lane } from '../components/Lane';
-import { TowerSlotView } from '../components/TowerSlotView';
+import { TowerView } from '../components/TowerView';
 import { EnemyView } from '../components/EnemyView';
 import { ProjectileView } from '../components/ProjectileView';
 import { BaseView } from '../components/BaseView';
@@ -33,39 +33,28 @@ interface GameScreenProps {
   settings: GameSettings;
 }
 
-/**
- * Main game screen
- */
 export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) => {
-  // Get screen dimensions
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
   
-  // Calculate game area dimensions (minus sidebar)
   const gameWidth = screenWidth - SIDEBAR_WIDTH;
   const gameHeight = screenHeight * 0.92;
   
   const [gameState, setGameState] = useState<GameState>(() => 
     createInitialState(gameWidth, gameHeight)
   );
-  const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
+  const [selectedTowerType, setSelectedTowerType] = useState<TowerType | null>(null);
+  const [selectedTower, setSelectedTower] = useState<Tower | null>(null);
 
-  const gameStateRef = useRef(gameState);
   const haptics = useHaptics(settings.hapticsEnabled);
   const sound = useSound(settings.soundEnabled);
   const dimensionsRef = useRef({ width: gameWidth, height: gameHeight });
 
-  // Keep ref in sync
-  useEffect(() => {
-    gameStateRef.current = gameState;
-  }, [gameState]);
-
-  // Reset spawn timers when game starts
   useEffect(() => {
     resetSpawnTimers();
   }, []);
 
-  // Game loop callback
+  // Game loop
   const onUpdate = useCallback((deltaTime: number) => {
     setGameState(prev => {
       if (prev.isPaused || prev.gameOver) return prev;
@@ -78,10 +67,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
     });
   }, []);
 
-  // Use game loop
   useGameLoop(onUpdate, 60, gameState.isRunning && !gameState.isPaused);
 
-  // Check for game over
+  // Game over
   useEffect(() => {
     if (gameState.gameOver) {
       haptics.onGameOver();
@@ -95,70 +83,100 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
     }
   }, [gameState.gameOver]);
 
-  // Handle slot tap - just select it
-  const handleSlotPress = useCallback((slot: TowerSlot) => {
-    if (slot.tower) {
-      // Already has tower - could upgrade
-      setSelectedSlotIndex(slot.index);
-    } else if (!slot.locked) {
-      // Empty slot - select for placement
-      setSelectedSlotIndex(slot.index);
+  // Handle tap on game area - place tower or select existing
+  const handleGamePress = useCallback((event: any) => {
+    const { locationX, locationY } = event.nativeEvent;
+    
+    // Check if tapped on existing tower first
+    for (const tower of gameState.towers) {
+      const dist = Math.sqrt(
+        Math.pow(locationX - tower.x, 2) + Math.pow(locationY - tower.y, 2)
+      );
+      if (dist < GAME_CONFIG.slotRadius + 10) {
+        // Selected existing tower
+        setSelectedTower(tower);
+        setSelectedTowerType(null);
+        return;
+      }
     }
-  }, []);
+    
+    // Try to place a new tower
+    if (selectedTowerType) {
+      const result = canPlaceTowerAt(
+        gameState,
+        locationX,
+        locationY,
+        selectedTowerType,
+        gameWidth,
+        gameHeight
+      );
+      
+      if (result.canPlace) {
+        haptics.onTowerPlace();
+        sound.playPlace();
+        setGameState(prev => 
+          placeTowerAt(prev, locationX, locationY, selectedTowerType, gameWidth, gameHeight)
+        );
+        // Keep tower type selected for quick placement
+      }
+    }
+    
+    // Deselect tower if tapped elsewhere
+    setSelectedTower(null);
+  }, [gameState, selectedTowerType, gameWidth, gameHeight, haptics, sound]);
 
-  // Handle tower selection from sidebar
-  const handleSelectTower = useCallback((type: TowerType) => {
-    if (selectedSlotIndex === null) return;
+  // Handle tower type selection from sidebar
+  const handleSelectTowerType = useCallback((type: TowerType) => {
+    if (selectedTowerType === type) {
+      setSelectedTowerType(null); // Toggle off
+    } else {
+      setSelectedTowerType(type);
+      setSelectedTower(null);
+    }
+  }, [selectedTowerType]);
 
-    setGameState(prev => {
-      if (!canPlaceTower(prev, selectedSlotIndex, type)) return prev;
+  // Handle upgrade from sidebar
+  const handleUpgrade = useCallback(() => {
+    if (!selectedTower) return;
+    
+    if (canUpgradeTower(gameState, selectedTower.id)) {
+      haptics.onTowerUpgrade();
+      sound.playUpgrade();
+      setGameState(prev => upgradeTower(prev, selectedTower.id));
+      
+      // Update selected tower reference
+      setSelectedTower(prev => {
+        if (!prev) return null;
+        const updated = gameState.towers.find(t => t.id === prev.id);
+        return updated ? { ...updated, level: updated.level + 1 } : null;
+      });
+    }
+  }, [selectedTower, gameState, haptics, sound]);
 
-      haptics.onTowerPlace();
-      sound.playPlace();
-
-      return placeTower(prev, selectedSlotIndex, type);
-    });
-
-    setSelectedSlotIndex(null);
-  }, [selectedSlotIndex, haptics, sound]);
-
-  // Handle pause/resume
+  // Pause
   const handlePause = useCallback(() => {
     setGameState(prev => ({ ...prev, isPaused: !prev.isPaused }));
   }, []);
-
-  // Check if selected slot can place
-  const selectedSlot = selectedSlotIndex !== null ? gameState.slots[selectedSlotIndex] : null;
-  const canPlace = selectedSlot !== null && !selectedSlot.locked && !selectedSlot.tower;
 
   return (
     <SafeArea style={styles.container} edges={['top']}>
       <View style={styles.mainLayout}>
         {/* Game Area */}
-        <View style={styles.gameContainer}>
-          <View
-            style={[
-              styles.gameWorld,
-              {
-                width: gameWidth,
-                height: gameHeight,
-              },
-            ]}
-          >
-            {/* Lane background with S-curve path */}
+        <TouchableWithoutFeedback onPress={handleGamePress}>
+          <View style={[styles.gameWorld, { width: gameWidth, height: gameHeight }]}>
+            {/* Lane background */}
             <Lane
               width={gameWidth}
               height={gameHeight}
-              timeMarkerProgress={gameState.timeMarkerProgress}
+              timeMarkerProgress={0}
             />
 
-            {/* Tower slots */}
-            {gameState.slots.map(slot => (
-              <TowerSlotView
-                key={slot.index}
-                slot={slot}
-                onPress={() => handleSlotPress(slot)}
-                isSelected={selectedSlotIndex === slot.index}
+            {/* Towers */}
+            {gameState.towers.map(tower => (
+              <TowerView
+                key={tower.id}
+                tower={tower}
+                isSelected={selectedTower?.id === tower.id}
               />
             ))}
 
@@ -179,10 +197,19 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
               gameWidth={gameWidth}
               gameHeight={gameHeight}
             />
-          </View>
-        </View>
 
-        {/* Right Sidebar */}
+            {/* Placement hint */}
+            {selectedTowerType && (
+              <View style={styles.placementHint}>
+                <Text style={styles.placementHintText}>
+                  Tap near the path to place {TOWER_CONFIGS[selectedTowerType].icon}
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableWithoutFeedback>
+
+        {/* Sidebar */}
         <Sidebar
           sol={gameState.sol}
           time={gameState.elapsedTime}
@@ -190,9 +217,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
           kills={gameState.kills}
           baseHp={gameState.baseHp}
           maxBaseHp={gameState.maxBaseHp}
-          selectedSlotIndex={selectedSlotIndex}
-          canPlace={canPlace}
-          onSelectTower={handleSelectTower}
+          selectedTowerType={selectedTowerType}
+          selectedTower={selectedTower}
+          towerCount={gameState.towers.length}
+          onSelectTowerType={handleSelectTowerType}
+          onUpgrade={handleUpgrade}
           onPause={handlePause}
           isPaused={gameState.isPaused}
         />
@@ -207,13 +236,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
             
             <View style={styles.pauseInfo}>
               <Text style={styles.pauseInfoText}>
-                🎮 Tap a slot on the map, then tap a tower in the sidebar to place it
+                1️⃣ Select a tower in the sidebar
               </Text>
               <Text style={styles.pauseInfoText}>
-                ⬆️ Towers auto-upgrade when you have enough SOL
+                2️⃣ Tap anywhere near the path to place it
               </Text>
               <Text style={styles.pauseInfoText}>
-                🛡️ Defend the network from FUD, Rug Pulls, and Congestion!
+                3️⃣ Tap a tower to select, then upgrade in sidebar
+              </Text>
+              <Text style={styles.pauseInfoText}>
+                🆙 Upgrades increase damage, fire rate, AND range!
               </Text>
             </View>
             
@@ -236,13 +268,25 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
   },
-  gameContainer: {
-    flex: 1,
-    overflow: 'hidden',
-  },
   gameWorld: {
     backgroundColor: COLORS.bgDark,
     overflow: 'hidden',
+  },
+  placementHint: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    right: 10,
+    backgroundColor: 'rgba(153, 69, 255, 0.9)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  placementHintText: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   pauseOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -272,10 +316,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   pauseInfoText: {
-    fontSize: 13,
+    fontSize: 14,
     color: COLORS.text,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   resumeButton: {
     backgroundColor: COLORS.solanaPurple,

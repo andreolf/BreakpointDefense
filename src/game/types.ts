@@ -26,9 +26,9 @@ export interface Enemy {
 export interface Tower {
   id: string;
   type: TowerType;
-  slotIndex: number;
   x: number;
   y: number;
+  pathProgress: number;  // Where along path (0-1)
   level: number;         // 1-3
   lastFireTime: number;
   targetId: string | null;
@@ -47,17 +47,8 @@ export interface Projectile {
   towerType: TowerType;
 }
 
-export interface TowerSlot {
-  index: number;
-  x: number;
-  y: number;
-  pathProgress: number;  // Position along path (0-1)
-  tower: Tower | null;
-  locked: boolean;       // Locked if time marker has passed
-}
-
 // =============================================================================
-// GAME STATE
+// GAME STATE - Simplified without slots
 // =============================================================================
 
 export interface GameState {
@@ -68,7 +59,7 @@ export interface GameState {
   
   // Time tracking
   startTime: number;
-  elapsedTime: number;      // Seconds
+  elapsedTime: number;
   lastUpdateTime: number;
   
   // Wave management
@@ -78,21 +69,17 @@ export interface GameState {
   lastMinibossTime: number;
   spawnInterval: number;
   
-  // Time marker position (0-1 along path)
-  timeMarkerProgress: number;
-  
   // Resources
-  sol: number;              // Currency (SOL instead of coins)
+  sol: number;
   
   // Base
   baseHp: number;
   maxBaseHp: number;
   
-  // Entities
+  // Entities - towers placed anywhere now
   enemies: Enemy[];
   towers: Tower[];
   projectiles: Projectile[];
-  slots: TowerSlot[];
   
   // Stats
   kills: number;

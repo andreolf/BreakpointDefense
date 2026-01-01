@@ -1,6 +1,7 @@
 // Component exports
 export { Lane } from './Lane';
 export { TowerSlotView } from './TowerSlotView';
+export { TowerView } from './TowerView';
 export { EnemyView } from './EnemyView';
 export { ProjectileView } from './ProjectileView';
 export { BaseView } from './BaseView';
