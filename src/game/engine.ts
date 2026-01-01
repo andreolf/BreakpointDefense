@@ -68,6 +68,28 @@ function findClosestPathProgress(x: number, y: number): number {
   return closestProgress;
 }
 
+function getDistanceToPath(x: number, y: number): number {
+  let closestDist = Infinity;
+  
+  for (let i = 0; i < PATH_POINTS.length - 1; i++) {
+    for (let t = 0; t <= 1; t += 0.05) {
+      const px = lerp(PATH_POINTS[i].x, PATH_POINTS[i + 1].x, t);
+      const py = lerp(PATH_POINTS[i].y, PATH_POINTS[i + 1].y, t);
+      const d = distance(x, y, px, py);
+      if (d < closestDist) {
+        closestDist = d;
+      }
+    }
+  }
+  return closestDist;
+}
+
+// Check if a position is near the path (for popup to appear)
+export function isNearPath(x: number, y: number): boolean {
+  const distToPath = getDistanceToPath(x, y);
+  return distToPath < GAME_CONFIG.pathClickRadius;
+}
+
 // =============================================================================
 // INITIAL STATE
 // =============================================================================

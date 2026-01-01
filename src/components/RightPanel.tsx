@@ -1,5 +1,5 @@
 /**
- * Right Panel - Clean layout with Network Health on top
+ * Right Panel - Clean layout (Health moved to top-left overlay)
  */
 
 import React from 'react';
@@ -46,8 +46,6 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onPause,
 }) => {
   const tier = getTier(gameState.elapsedTime);
-  const hpPercent = (gameState.baseHp / gameState.maxBaseHp) * 100;
-  const hpColor = hpPercent > 60 ? COLORS.hpGood : hpPercent > 30 ? COLORS.hpMedium : COLORS.hpLow;
 
   const now = Date.now();
   const bombCooldown = Math.max(0, ABILITIES.bomb.cooldown - (now - gameState.abilities.bomb.lastUsed) / 1000);
@@ -66,24 +64,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* ===== NETWORK HEALTH - TOP PRIORITY ===== */}
-        <View style={styles.healthCard}>
-          <View style={styles.healthHeader}>
-            <Text style={styles.healthTitle}>🌐 NETWORK HEALTH</Text>
-          </View>
-          <View style={styles.healthBarContainer}>
-            <View style={styles.healthBar}>
-              <View style={[styles.healthFill, { width: `${hpPercent}%`, backgroundColor: hpColor }]} />
-            </View>
-            <Text style={[styles.healthValue, { color: hpColor }]}>
-              {gameState.baseHp}
-            </Text>
-          </View>
-        </View>
-
-        {/* ===== SOL BALANCE ===== */}
+        {/* ===== SOL BALANCE - BIG & TOP ===== */}
         <View style={styles.solCard}>
-          <Text style={styles.solLabel}>SOL</Text>
+          <Text style={styles.solLabel}>SOL BALANCE</Text>
           <Text style={styles.solValue}>◎ {gameState.sol}</Text>
         </View>
 
@@ -285,54 +268,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  // Health Card - TOP
-  healthCard: {
-    backgroundColor: COLORS.bgCard,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: COLORS.hpGood,
-  },
-  healthHeader: {
-    marginBottom: 10,
-  },
-  healthTitle: {
-    color: COLORS.text,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  healthBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  healthBar: {
-    flex: 1,
-    height: 14,
-    backgroundColor: COLORS.bgCardLight,
-    borderRadius: 7,
-    overflow: 'hidden',
-    marginRight: 12,
-  },
-  healthFill: {
-    height: '100%',
-    borderRadius: 7,
-  },
-  healthValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    minWidth: 40,
-    textAlign: 'right',
-  },
-
-  // SOL Card
+  // SOL Card - NOW AT TOP, BIG
   solCard: {
     backgroundColor: COLORS.bgCard,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 14,
+    padding: 20,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
     borderWidth: 2,
     borderColor: COLORS.solanaGreen,
   },
@@ -340,11 +282,11 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 11,
     letterSpacing: 2,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   solValue: {
     color: COLORS.solanaGreen,
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '800',
   },
 

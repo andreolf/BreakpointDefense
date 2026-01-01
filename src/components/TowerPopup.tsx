@@ -1,19 +1,19 @@
 /**
  * Tower Popup
- * Centered modal for tower selection with better visuals
+ * Always shows all towers - disabled ones are shadowed with reason
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
-import Svg, { Circle, Polygon, G } from 'react-native-svg';
-import { TOWER_CONFIGS, COLORS, TowerType } from '../game/config';
+import Svg, { Circle, Polygon } from 'react-native-svg';
+import { TOWER_CONFIGS, COLORS, TowerType, GAME_CONFIG } from '../game/config';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface TowerPopupProps {
   visible: boolean;
-  position: { x: number; y: number };
   sol: number;
+  maxTowers: boolean;
   onSelect: (type: TowerType) => void;
   onClose: () => void;
 }
@@ -25,7 +25,6 @@ const TowerIcon = ({ type, size, color }: { type: TowerType; size: number; color
   
   switch (type) {
     case 'validator':
-      // Lightning bolt shape (triangle pointing up)
       return (
         <Svg width={size} height={size}>
           <Polygon
@@ -37,7 +36,6 @@ const TowerIcon = ({ type, size, color }: { type: TowerType; size: number; color
         </Svg>
       );
     case 'jupiter':
-      // Hexagon (planet-like)
       const hexPoints = [];
       for (let i = 0; i < 6; i++) {
         const angle = (Math.PI / 3) * i - Math.PI / 2;
@@ -54,7 +52,6 @@ const TowerIcon = ({ type, size, color }: { type: TowerType; size: number; color
         </Svg>
       );
     case 'tensor':
-      // Diamond
       return (
         <Svg width={size} height={size}>
           <Polygon
@@ -76,8 +73,8 @@ const TowerIcon = ({ type, size, color }: { type: TowerType; size: number; color
 
 export const TowerPopup: React.FC<TowerPopupProps> = ({
   visible,
-  position,
   sol,
+  maxTowers,
   onSelect,
   onClose,
 }) => {
@@ -91,31 +88,50 @@ export const TowerPopup: React.FC<TowerPopupProps> = ({
         <View style={styles.popup}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Build Tower</Text>
-            <Text style={styles.solDisplay}>◎ {sol} available</Text>
+            <Text style={styles.title}>🏗️ Build Tower</Text>
+            <View style={styles.solBadge}>
+              <Text style={styles.solText}>◎ {sol} available</Text>
+            </View>
           </View>
 
-          {/* Tower Options */}
+          {/* Max towers warning */}
+          {maxTowers && (
+            <View style={styles.warningBanner}>
+              <Text style={styles.warningText}>⚠️ Maximum towers reached ({GAME_CONFIG.maxTowers})</Text>
+            </View>
+          )}
+
+          {/* Tower Options - ALWAYS VISIBLE */}
           <View style={styles.towersGrid}>
             {towers.map((type) => {
               const config = TOWER_CONFIGS[type];
               const canAfford = sol >= config.cost;
+              const canBuild = canAfford && !maxTowers;
+              
+              // Determine why it's disabled
+              let disabledReason = '';
+              if (maxTowers) {
+                disabledReason = 'Max towers';
+              } else if (!canAfford) {
+                disabledReason = `Need ◎${config.cost - sol} more`;
+              }
 
               return (
                 <TouchableOpacity
                   key={type}
-                  style={[styles.towerOption, !canAfford && styles.disabled]}
-                  onPress={() => canAfford && onSelect(type)}
-                  disabled={!canAfford}
-                  activeOpacity={0.7}
+                  style={[styles.towerOption, !canBuild && styles.towerDisabled]}
+                  onPress={() => canBuild && onSelect(type)}
+                  activeOpacity={canBuild ? 0.7 : 1}
                 >
                   {/* Icon */}
                   <View style={[styles.iconContainer, { backgroundColor: config.color + '30' }]}>
-                    <TowerIcon type={type} size={50} color={config.color} />
+                    <TowerIcon type={type} size={50} color={canBuild ? config.color : '#555'} />
                   </View>
 
                   {/* Info */}
-                  <Text style={styles.towerName}>{config.name}</Text>
+                  <Text style={[styles.towerName, !canBuild && styles.textDisabled]}>
+                    {config.name}
+                  </Text>
                   <Text style={styles.towerDesc}>{config.description}</Text>
                   
                   {/* Stats */}
@@ -124,12 +140,17 @@ export const TowerPopup: React.FC<TowerPopupProps> = ({
                     <Text style={styles.stat}>📡{config.rangeLevels[0]}</Text>
                   </View>
 
-                  {/* Cost */}
-                  <View style={[styles.costBadge, !canAfford && styles.costBadgeRed]}>
-                    <Text style={[styles.costText, !canAfford && styles.costTextRed]}>
-                      ◎ {config.cost}
-                    </Text>
-                  </View>
+                  {/* Cost / Disabled reason */}
+                  {canBuild ? (
+                    <View style={styles.costBadge}>
+                      <Text style={styles.costText}>◎ {config.cost}</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.disabledBadge}>
+                      <Text style={styles.disabledCost}>◎ {config.cost}</Text>
+                      <Text style={styles.disabledReason}>{disabledReason}</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -156,29 +177,48 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgDarker,
     borderRadius: 20,
     padding: 24,
-    width: Math.min(SCREEN_WIDTH * 0.9, 500),
-    borderWidth: 2,
+    width: Math.min(SCREEN_WIDTH * 0.9, 520),
+    borderWidth: 3,
     borderColor: COLORS.solanaPurple,
     shadowColor: COLORS.solanaPurple,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
+    shadowOpacity: 0.6,
+    shadowRadius: 25,
     elevation: 20,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   title: {
     color: COLORS.text,
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '800',
     letterSpacing: 1,
   },
-  solDisplay: {
+  solBadge: {
+    backgroundColor: COLORS.bgCard,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginTop: 10,
+  },
+  solText: {
     color: COLORS.solanaGreen,
-    fontSize: 14,
-    marginTop: 8,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  warningBanner: {
+    backgroundColor: COLORS.hpLow + '30',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  warningText: {
+    color: COLORS.hpLow,
+    fontSize: 13,
+    fontWeight: '600',
   },
   towersGrid: {
     flexDirection: 'row',
@@ -195,8 +235,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.bgCardLight,
   },
-  disabled: {
-    opacity: 0.4,
+  towerDisabled: {
+    opacity: 0.5,
+    backgroundColor: COLORS.bgDark,
   },
   iconContainer: {
     width: 70,
@@ -212,12 +253,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 4,
   },
+  textDisabled: {
+    color: COLORS.textMuted,
+  },
   towerDesc: {
     color: COLORS.textMuted,
     fontSize: 11,
     textAlign: 'center',
     marginBottom: 10,
-    minHeight: 30,
+    minHeight: 28,
   },
   statsRow: {
     flexDirection: 'row',
@@ -230,30 +274,42 @@ const styles = StyleSheet.create({
   },
   costBadge: {
     backgroundColor: COLORS.solanaGreen,
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
     borderRadius: 20,
-  },
-  costBadgeRed: {
-    backgroundColor: COLORS.bgCardLight,
   },
   costText: {
     color: COLORS.bgDark,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
   },
-  costTextRed: {
+  disabledBadge: {
+    backgroundColor: COLORS.bgCardLight,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  disabledCost: {
     color: COLORS.hpLow,
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'line-through',
+  },
+  disabledReason: {
+    color: COLORS.textMuted,
+    fontSize: 10,
+    marginTop: 2,
   },
   cancelBtn: {
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
     backgroundColor: COLORS.bgCard,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   cancelText: {
     color: COLORS.textMuted,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
   },
 });

@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import {
   createInitialState,
   updateGame,
   placeTower,
   canPlaceTower,
+  isNearPath,
   canUpgradeTowerLevel,
   canUpgradeTowerRange,
   upgradeTowerLevel,
@@ -22,7 +23,7 @@ import {
   useAirdrop,
 } from '../game/engine';
 import { GameState } from '../game/types';
-import { COLORS, TowerType, GAME_WIDTH, GAME_HEIGHT, GAME_CONFIG } from '../game/config';
+import { COLORS, TowerType, GAME_WIDTH, GAME_HEIGHT } from '../game/config';
 import { useGameLoop } from '../hooks/useGameLoop';
 import { useHaptics } from '../hooks/useHaptics';
 
@@ -35,6 +36,7 @@ import { RightPanel } from '../components/RightPanel';
 import { PauseModal } from '../components/PauseModal';
 import { TowerPopup } from '../components/TowerPopup';
 import { ZoomPanContainer } from '../components/ZoomPanContainer';
+import { HealthOverlay } from '../components/HealthOverlay';
 
 interface GameScreenProps {
   onGameOver: (state: GameState) => void;
@@ -48,7 +50,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
   
   // Popup state
   const [popupVisible, setPopupVisible] = useState(false);
-  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [pendingPlacePosition, setPendingPlacePosition] = useState({ x: 0, y: 0 });
   
   const { triggerLight, triggerMedium } = useHaptics();
@@ -65,18 +66,15 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
     });
   }, !gameState.isPaused && gameState.isRunning);
 
-  // Handle click on map - show popup if valid placement spot
+  // Handle click on map - ALWAYS show popup if near path (even if can't afford)
   const handleMapClick = useCallback((x: number, y: number) => {
-    // Check if any tower type can be placed here
-    const canPlace = canPlaceTower(gameState, x, y, 'validator'); // Just check with cheapest
-    
-    if (canPlace) {
+    // Check if click is near the path (not checking cost!)
+    if (isNearPath(x, y)) {
       setPendingPlacePosition({ x, y });
-      setPopupPosition({ x: x + 50, y: y - 50 }); // Offset popup from click
       setPopupVisible(true);
       setSelectedTowerId(null);
     }
-  }, [gameState]);
+  }, []);
 
   // Handle tower type selection from popup
   const handleSelectTowerType = useCallback((type: TowerType) => {
@@ -200,6 +198,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
             <ProjectileView key={proj.id} projectile={proj} />
           ))}
         </ZoomPanContainer>
+
+        {/* Health Overlay - Top Left of game area */}
+        <HealthOverlay hp={gameState.baseHp} maxHp={gameState.maxBaseHp} />
       </View>
 
       {/* Right Panel - Stats + Upgrades + Abilities */}
@@ -219,8 +220,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
       {/* Tower Selection Popup */}
       <TowerPopup
         visible={popupVisible}
-        position={popupPosition}
         sol={gameState.sol}
+        maxTowers={gameState.towers.length >= 20}
         onSelect={handleSelectTowerType}
         onClose={() => setPopupVisible(false)}
       />
