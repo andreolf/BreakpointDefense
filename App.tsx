@@ -1,8 +1,15 @@
+/**
+ * Solana Breakpoint Defense
+ * A hypercasual tower defense game
+ */
+
 import React, { useState, useCallback, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Settings, TowerSlot } from './src/game/types';
+import { GameSettings } from './src/game/types';
 import { loadSettings, saveSettings } from './src/storage/settings';
+import { saveRun } from './src/storage/leaderboard';
+import { getTier } from './src/game/config';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { GameOverScreen } from './src/screens/GameOverScreen';
@@ -28,10 +35,10 @@ const SafeProvider = Platform.OS === 'web' ? WebSafeAreaProvider : (SafeAreaProv
 type Screen = 'home' | 'game' | 'gameOver' | 'leaderboard';
 
 interface GameOverData {
-  time: number;
+  survivalTime: number;
   wave: number;
   kills: number;
-  slots: TowerSlot[];
+  solEarned: number;
 }
 
 // Error Boundary for catching runtime errors
@@ -58,7 +65,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
     if (this.state.hasError) {
       return (
         <View style={errorStyles.container}>
-          <Text style={errorStyles.title}>Something went wrong</Text>
+          <Text style={errorStyles.title}>⚠️ Network Error</Text>
           <Text style={errorStyles.message}>{this.state.error?.message}</Text>
           <Text style={errorStyles.stack}>{this.state.error?.stack?.substring(0, 500)}</Text>
         </View>
@@ -101,14 +108,19 @@ const errorStyles = StyleSheet.create({
 function AppContent() {
   const [screen, setScreen] = useState<Screen>('home');
   const [gameOverData, setGameOverData] = useState<GameOverData | null>(null);
-  const [settings, setSettings] = useState<Settings>({
+  const [settings, setSettings] = useState<GameSettings>({
     soundEnabled: true,
-    hapticEnabled: true,
+    hapticsEnabled: true,
+    showFps: false,
   });
 
   // Load settings on mount
   useEffect(() => {
-    loadSettings().then(setSettings);
+    loadSettings().then((loaded) => {
+      if (loaded) {
+        setSettings(loaded);
+      }
+    });
   }, []);
 
   // Navigation handlers
@@ -126,8 +138,21 @@ function AppContent() {
   }, []);
 
   const handleGameOver = useCallback(
-    (time: number, wave: number, kills: number, slots: TowerSlot[]) => {
-      setGameOverData({ time, wave, kills, slots });
+    async (survivalTime: number, wave: number, kills: number, solEarned: number) => {
+      // Save to leaderboard
+      const tier = getTier(survivalTime);
+      await saveRun({
+        id: `${Date.now()}`,
+        timestamp: Date.now(),
+        survivalTime,
+        wave,
+        kills,
+        solEarned,
+        tierName: tier.name,
+        tierIcon: tier.icon,
+      });
+      
+      setGameOverData({ survivalTime, wave, kills, solEarned });
       setScreen('gameOver');
     },
     []
@@ -147,10 +172,10 @@ function AppContent() {
 
       {screen === 'gameOver' && gameOverData && (
         <GameOverScreen
-          time={gameOverData.time}
+          survivalTime={gameOverData.survivalTime}
           wave={gameOverData.wave}
           kills={gameOverData.kills}
-          slots={gameOverData.slots}
+          solEarned={gameOverData.solEarned}
           onPlayAgain={goToGame}
           onHome={goToHome}
         />

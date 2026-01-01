@@ -1,68 +1,74 @@
-import { useCallback } from 'react';
+/**
+ * useHaptics Hook
+ * Provides haptic feedback with conditional execution
+ */
+
+import { useCallback, useMemo } from 'react';
 import { Platform } from 'react-native';
 
-// Only import Haptics on native platforms
-let Haptics: typeof import('expo-haptics') | null = null;
+// Conditionally import Haptics (not available on web)
+let Haptics: any = null;
 if (Platform.OS !== 'web') {
+  try {
+    Haptics = require('expo-haptics');
+  } catch (e) {
+    console.log('Haptics not available');
+  }
+}
+
+interface HapticsActions {
+  onTowerPlace: () => void;
+  onTowerUpgrade: () => void;
+  onEnemyKill: () => void;
+  onGameOver: () => void;
+  onButtonPress: () => void;
+}
+
+export function useHaptics(enabled: boolean = true): HapticsActions {
+  const isAvailable = Platform.OS !== 'web' && Haptics !== null;
+  
+  const onTowerPlace = useCallback(() => {
+    if (!enabled || !isAvailable) return;
     try {
-        Haptics = require('expo-haptics');
-    } catch (e) {
-        // Haptics not available
-    }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (e) {}
+  }, [enabled, isAvailable]);
+  
+  const onTowerUpgrade = useCallback(() => {
+    if (!enabled || !isAvailable) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    } catch (e) {}
+  }, [enabled, isAvailable]);
+  
+  const onEnemyKill = useCallback(() => {
+    if (!enabled || !isAvailable) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {}
+  }, [enabled, isAvailable]);
+  
+  const onGameOver = useCallback(() => {
+    if (!enabled || !isAvailable) return;
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } catch (e) {}
+  }, [enabled, isAvailable]);
+  
+  const onButtonPress = useCallback(() => {
+    if (!enabled || !isAvailable) return;
+    try {
+      Haptics.selectionAsync();
+    } catch (e) {}
+  }, [enabled, isAvailable]);
+  
+  return useMemo(() => ({
+    onTowerPlace,
+    onTowerUpgrade,
+    onEnemyKill,
+    onGameOver,
+    onButtonPress,
+  }), [onTowerPlace, onTowerUpgrade, onEnemyKill, onGameOver, onButtonPress]);
 }
 
-/**
- * Hook for haptic feedback (no-op on web)
- */
-export function useHaptics(enabled: boolean) {
-    const light = useCallback(() => {
-        if (enabled && Haptics && Platform.OS !== 'web') {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-    }, [enabled]);
-
-    const medium = useCallback(() => {
-        if (enabled && Haptics && Platform.OS !== 'web') {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        }
-    }, [enabled]);
-
-    const heavy = useCallback(() => {
-        if (enabled && Haptics && Platform.OS !== 'web') {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        }
-    }, [enabled]);
-
-    const success = useCallback(() => {
-        if (enabled && Haptics && Platform.OS !== 'web') {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-    }, [enabled]);
-
-    const warning = useCallback(() => {
-        if (enabled && Haptics && Platform.OS !== 'web') {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        }
-    }, [enabled]);
-
-    const error = useCallback(() => {
-        if (enabled && Haptics && Platform.OS !== 'web') {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        }
-    }, [enabled]);
-
-    return {
-        light,
-        medium,
-        heavy,
-        success,
-        warning,
-        error,
-        // Convenience methods
-        onTowerPlace: medium,
-        onTowerUpgrade: success,
-        onEnemyKill: light,
-        onBaseDamage: warning,
-        onGameOver: error,
-    };
-}
+export default useHaptics;

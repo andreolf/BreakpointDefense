@@ -1,7 +1,13 @@
+/**
+ * GameScreen
+ * Main game screen with tower defense gameplay
+ */
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions, Text, TouchableOpacity } from 'react-native';
 import { SafeArea } from '../components/SafeArea';
-import { GameState, TowerType, TowerSlot, TowerSelectState, Settings } from '../game/types';
+import { GameState, TowerSlot, GameSettings } from '../game/types';
+import { TowerType } from '../game/config';
 import {
   createInitialState,
   updateGame,
@@ -23,24 +29,41 @@ import { BaseView } from '../components/BaseView';
 import { TowerSelectPopup } from '../components/TowerSelectPopup';
 import { HUD } from '../components/HUD';
 
+interface TowerSelectState {
+  visible: boolean;
+  slotIndex: number | null;
+}
+
 interface GameScreenProps {
-  onGameOver: (time: number, wave: number, kills: number, slots: TowerSlot[]) => void;
-  settings: Settings;
+  onGameOver: (time: number, wave: number, kills: number, solEarned: number) => void;
+  settings: GameSettings;
 }
 
 /**
  * Main game screen - renders the game world and handles input
  */
 export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) => {
-  const [gameState, setGameState] = useState<GameState>(createInitialState);
+  // Get screen dimensions
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
+  
+  // Calculate game area dimensions
+  const gameWidth = screenWidth;
+  const gameHeight = screenHeight * 0.7;
+  
+  const [gameState, setGameState] = useState<GameState>(() => 
+    createInitialState(gameWidth, gameHeight)
+  );
   const [towerSelect, setTowerSelect] = useState<TowerSelectState>({
     visible: false,
     slotIndex: null,
   });
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
 
   const gameStateRef = useRef(gameState);
-  const haptics = useHaptics(settings.hapticEnabled);
+  const haptics = useHaptics(settings.hapticsEnabled);
   const sound = useSound(settings.soundEnabled);
+  const dimensionsRef = useRef({ width: gameWidth, height: gameHeight });
 
   // Keep ref in sync
   useEffect(() => {
@@ -55,20 +78,30 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
   // Game loop callback
   const onUpdate = useCallback((deltaTime: number) => {
     setGameState(prev => {
-      if (prev.paused || prev.gameOver) return prev;
-      return updateGame(prev, deltaTime);
+      if (prev.isPaused || prev.gameOver) return prev;
+      return updateGame(
+        prev, 
+        deltaTime,
+        dimensionsRef.current.width,
+        dimensionsRef.current.height
+      );
     });
   }, []);
 
   // Use game loop
-  useGameLoop(onUpdate, 60, gameState.running && !gameState.paused);
+  useGameLoop(onUpdate, 60, gameState.isRunning && !gameState.isPaused);
 
   // Check for game over
   useEffect(() => {
     if (gameState.gameOver) {
       haptics.onGameOver();
       sound.playGameOver();
-      onGameOver(gameState.time, gameState.wave, gameState.kills, gameState.slots);
+      onGameOver(
+        gameState.elapsedTime,
+        gameState.wave,
+        gameState.kills,
+        gameState.solEarned
+      );
     }
   }, [gameState.gameOver]);
 
@@ -80,6 +113,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
       visible: true,
       slotIndex: slot.index,
     });
+    setSelectedSlotIndex(slot.index);
   }, []);
 
   // Handle tower selection
@@ -96,6 +130,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
     });
 
     setTowerSelect({ visible: false, slotIndex: null });
+    setSelectedSlotIndex(null);
   }, [towerSelect.slotIndex, haptics, sound]);
 
   // Handle tower upgrade
@@ -115,22 +150,23 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
     });
 
     setTowerSelect({ visible: false, slotIndex: null });
+    setSelectedSlotIndex(null);
   }, [towerSelect.slotIndex, gameState.slots, haptics, sound]);
 
-  // Handle pause
+  // Handle pause/resume
   const handlePause = useCallback(() => {
-    setGameState(prev => ({ ...prev, paused: !prev.paused }));
+    setGameState(prev => ({ ...prev, isPaused: true }));
+  }, []);
+
+  const handleResume = useCallback(() => {
+    setGameState(prev => ({ ...prev, isPaused: false }));
   }, []);
 
   // Close tower select
   const closeTowerSelect = useCallback(() => {
     setTowerSelect({ visible: false, slotIndex: null });
+    setSelectedSlotIndex(null);
   }, []);
-
-  // Calculate scale to fit screen
-  const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height;
-  const scale = Math.min(screenWidth / GAME_WIDTH, (screenHeight - 100) / GAME_HEIGHT);
 
   const selectedSlot = towerSelect.slotIndex !== null
     ? gameState.slots[towerSelect.slotIndex]
@@ -140,13 +176,15 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
     <SafeArea style={styles.container} edges={['top']}>
       {/* HUD */}
       <HUD
-        time={gameState.time}
-        coins={gameState.coins}
+        time={gameState.elapsedTime}
+        sol={gameState.sol}
         baseHp={gameState.baseHp}
         maxBaseHp={gameState.maxBaseHp}
         wave={gameState.wave}
-        paused={gameState.paused}
+        kills={gameState.kills}
+        isPaused={gameState.isPaused}
         onPause={handlePause}
+        onResume={handleResume}
       />
 
       {/* Game World */}
@@ -155,14 +193,17 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
           style={[
             styles.gameWorld,
             {
-              width: GAME_WIDTH,
-              height: GAME_HEIGHT,
-              transform: [{ scale }],
+              width: gameWidth,
+              height: gameHeight,
             },
           ]}
         >
-          {/* Lane background */}
-          <Lane timeMarkerProgress={gameState.timeMarkerX} />
+          {/* Lane background with S-curve path */}
+          <Lane
+            width={gameWidth}
+            height={gameHeight}
+            timeMarkerProgress={gameState.timeMarkerProgress}
+          />
 
           {/* Tower slots */}
           {gameState.slots.map(slot => (
@@ -170,6 +211,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
               key={slot.index}
               slot={slot}
               onPress={() => handleSlotPress(slot)}
+              isSelected={selectedSlotIndex === slot.index}
             />
           ))}
 
@@ -184,30 +226,25 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
           ))}
 
           {/* Base */}
-          <BaseView hp={gameState.baseHp} maxHp={gameState.maxBaseHp} />
+          <BaseView
+            hp={gameState.baseHp}
+            maxHp={gameState.maxBaseHp}
+            gameWidth={gameWidth}
+            gameHeight={gameHeight}
+          />
         </View>
       </View>
 
       {/* Pause overlay */}
-      {gameState.paused && (
+      {gameState.isPaused && (
         <View style={styles.pauseOverlay}>
           <View style={styles.pauseContent}>
-            <View style={styles.pauseIcon}>
-              <View style={styles.pauseBar} />
-              <View style={styles.pauseBar} />
-            </View>
-            <View style={styles.pauseTextContainer}>
-              <View style={styles.pauseLine} />
-              <View style={styles.pauseText}>
-                <View style={styles.pauseLetter} />
-                <View style={styles.pauseLetter} />
-                <View style={styles.pauseLetter} />
-                <View style={styles.pauseLetter} />
-                <View style={styles.pauseLetter} />
-                <View style={styles.pauseLetter} />
-              </View>
-              <View style={styles.pauseLine} />
-            </View>
+            <Text style={styles.pauseTitle}>PAUSED</Text>
+            <Text style={styles.pauseSubtitle}>Solana Breakpoint Defense</Text>
+            
+            <TouchableOpacity style={styles.resumeButton} onPress={handleResume}>
+              <Text style={styles.resumeButtonText}>▶ RESUME</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -215,9 +252,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
       {/* Tower selection popup */}
       <TowerSelectPopup
         visible={towerSelect.visible}
-        coins={gameState.coins}
+        slotIndex={towerSelect.slotIndex || 0}
+        sol={gameState.sol}
         existingTower={selectedSlot?.tower || null}
-        onSelectTower={handleSelectTower}
+        onSelect={handleSelectTower}
         onUpgrade={handleUpgrade}
         onClose={closeTowerSelect}
       />
@@ -228,7 +266,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.bgDark,
   },
   gameContainer: {
     flex: 1,
@@ -237,48 +275,42 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   gameWorld: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.bgDark,
     overflow: 'hidden',
   },
   pauseOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   pauseContent: {
     alignItems: 'center',
+    padding: 40,
   },
-  pauseIcon: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+  pauseTitle: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: COLORS.solanaGreen,
+    marginBottom: 8,
+    letterSpacing: 4,
   },
-  pauseBar: {
-    width: 16,
-    height: 60,
-    backgroundColor: COLORS.primary,
-    borderRadius: 4,
+  pauseSubtitle: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    marginBottom: 40,
   },
-  pauseTextContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
+  resumeButton: {
+    backgroundColor: COLORS.solanaPurple,
+    paddingHorizontal: 40,
+    paddingVertical: 16,
+    borderRadius: 30,
   },
-  pauseLine: {
-    width: 40,
-    height: 2,
-    backgroundColor: COLORS.textDim,
-  },
-  pauseText: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  pauseLetter: {
-    width: 8,
-    height: 8,
-    backgroundColor: COLORS.textDim,
-    borderRadius: 2,
+  resumeButtonText: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 
+export default GameScreen;

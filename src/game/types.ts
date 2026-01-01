@@ -1,125 +1,126 @@
-// ============================================
-// CORE GAME TYPES
-// ============================================
+/**
+ * Game Types
+ * TypeScript interfaces for all game entities
+ */
 
-export type TowerType = 'fast' | 'chain' | 'splash';
-export type EnemyType = 'swarm' | 'tank' | 'miniboss';
+import { TowerType, EnemyType } from './config';
 
-export interface Position {
-  x: number;
-  y: number;
-}
+// =============================================================================
+// ENTITIES
+// =============================================================================
 
-// Tower entity
-export interface Tower {
-  id: string;
-  type: TowerType;
-  slotIndex: number;
-  position: Position;
-  level: number; // 1-3
-  lastFireTime: number;
-  targetId: string | null;
-}
-
-// Enemy entity
 export interface Enemy {
   id: string;
   type: EnemyType;
-  position: Position;
+  x: number;
+  y: number;
   hp: number;
   maxHp: number;
   speed: number;
   reward: number;
-  spawnTime: number;
-  pathProgress?: number; // Progress along the path (0-1)
+  damage: number;
+  pathProgress: number;  // 0-1 along the path
+  size: number;
 }
 
-// Projectile entity
+export interface Tower {
+  id: string;
+  type: TowerType;
+  slotIndex: number;
+  x: number;
+  y: number;
+  level: number;         // 1-3
+  lastFireTime: number;
+  targetId: string | null;
+}
+
 export interface Projectile {
   id: string;
-  fromTowerId: string;
-  towerType: TowerType;
-  position: Position;
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
   targetId: string;
   damage: number;
   speed: number;
-  level: number; // for chain/splash calculations
-  chainCount?: number; // for chain tower
-  hitEnemies?: string[]; // enemies already hit by this chain
+  towerId: string;
+  towerType: TowerType;
 }
 
-// Tower slot on the lane
 export interface TowerSlot {
   index: number;
-  position: Position;
+  x: number;
+  y: number;
+  pathProgress: number;  // Position along path (0-1)
   tower: Tower | null;
-  locked: boolean; // locked when time marker passes
+  locked: boolean;       // Locked if time marker has passed
 }
 
-// Tower configuration by type and level
-export interface TowerConfig {
-  name: string;
-  cost: number;
-  upgradeCost: number[];
-  damage: number[];
-  fireRate: number[]; // shots per second
-  range: number;
-  projectileSpeed: number;
-  // Chain tower specific
-  chainCount?: number;
-  chainRadius?: number;
-  chainDamageMultiplier?: number;
-  // Splash tower specific
-  splashRadius?: number;
-}
+// =============================================================================
+// GAME STATE
+// =============================================================================
 
-// Enemy configuration
-export interface EnemyConfig {
-  hp: number;
-  speed: number; // pixels per second
-  reward: number;
-}
-
-// Game state
 export interface GameState {
-  running: boolean;
-  paused: boolean;
+  // Core state
+  isRunning: boolean;
+  isPaused: boolean;
   gameOver: boolean;
-  time: number; // elapsed time in ms
-  coins: number;
+  
+  // Time tracking
+  startTime: number;
+  elapsedTime: number;      // Seconds
+  lastUpdateTime: number;
+  
+  // Wave management
+  wave: number;
+  spawnTimer: number;
+  lastWaveTime: number;
+  lastMinibossTime: number;
+  spawnInterval: number;
+  
+  // Time marker position (0-1 along path)
+  timeMarkerProgress: number;
+  
+  // Resources
+  sol: number;              // Currency (SOL instead of coins)
+  
+  // Base
   baseHp: number;
   maxBaseHp: number;
-  wave: number;
-  kills: number;
-  timeMarkerX: number; // the x position of the placement cutoff
+  
+  // Entities
   enemies: Enemy[];
   towers: Tower[];
   projectiles: Projectile[];
   slots: TowerSlot[];
+  
+  // Stats
+  kills: number;
+  damageDealt: number;
+  solEarned: number;
 }
 
-// Run result for leaderboard
+// =============================================================================
+// RUN RESULT (for leaderboard)
+// =============================================================================
+
 export interface RunResult {
   id: string;
-  time: number; // survival time in seconds
+  timestamp: number;
+  survivalTime: number;
   wave: number;
   kills: number;
-  tier: string;
-  date: number; // timestamp
+  solEarned: number;
+  tierName: string;
+  tierIcon: string;
 }
 
-// Tier thresholds
-export type Tier = 'Attendee' | 'Builder' | 'Core Contributor' | 'Infra Guardian' | 'Conference Legend';
+// =============================================================================
+// SETTINGS
+// =============================================================================
 
-// Tower selection popup state
-export interface TowerSelectState {
-  visible: boolean;
-  slotIndex: number | null;
-}
-
-// Settings
-export interface Settings {
+export interface GameSettings {
   soundEnabled: boolean;
-  hapticEnabled: boolean;
+  hapticsEnabled: boolean;
+  showFps: boolean;
 }
-

@@ -1,47 +1,78 @@
-import { useRef, useCallback, useEffect } from 'react';
+/**
+ * useSound Hook
+ * Provides sound effects (stubbed for now)
+ * TODO: Add actual sound assets
+ */
+
+import { useCallback, useMemo } from 'react';
 import { Platform } from 'react-native';
 
-// Only import Audio on native platforms
-let Audio: typeof import('expo-av').Audio | null = null;
+// Conditionally import Audio (not available on web)
+let Audio: any = null;
 if (Platform.OS !== 'web') {
   try {
     Audio = require('expo-av').Audio;
   } catch (e) {
-    // Audio not available
+    console.log('Audio not available');
   }
 }
 
-// TODO: Add actual sound assets
-// For now, sounds are no-ops on all platforms
-
-/**
- * Hook for managing game sounds (stubbed - no-op on all platforms)
- */
-export function useSound(enabled: boolean) {
-  // Initialize audio mode on native only
-  useEffect(() => {
-    if (Audio && Platform.OS !== 'web') {
-      Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-      }).catch(() => {
-        // Audio mode setting failed
-      });
-    }
-  }, []);
-
-  const playSound = useCallback(async (soundName: string) => {
-    if (!enabled) return;
-    // TODO: Implement actual sound playback when assets are added
-  }, [enabled]);
-
-  return {
-    playShoot: () => playSound('shoot'),
-    playHit: () => playSound('hit'),
-    playKill: () => playSound('kill'),
-    playPlace: () => playSound('place'),
-    playUpgrade: () => playSound('upgrade'),
-    playGameOver: () => playSound('gameOver'),
-  };
+interface SoundActions {
+  playPlace: () => void;
+  playUpgrade: () => void;
+  playShoot: () => void;
+  playHit: () => void;
+  playKill: () => void;
+  playGameOver: () => void;
 }
+
+export function useSound(enabled: boolean = true): SoundActions {
+  const isAvailable = Platform.OS !== 'web' && Audio !== null;
+  
+  // Stub functions for now
+  // TODO: Load actual sound files
+  
+  const playPlace = useCallback(() => {
+    if (!enabled || !isAvailable) return;
+    // TODO: Play tower placement sound
+    console.log('[Sound] Tower placed');
+  }, [enabled, isAvailable]);
+  
+  const playUpgrade = useCallback(() => {
+    if (!enabled || !isAvailable) return;
+    // TODO: Play upgrade sound
+    console.log('[Sound] Tower upgraded');
+  }, [enabled, isAvailable]);
+  
+  const playShoot = useCallback(() => {
+    if (!enabled || !isAvailable) return;
+    // TODO: Play shooting sound
+  }, [enabled, isAvailable]);
+  
+  const playHit = useCallback(() => {
+    if (!enabled || !isAvailable) return;
+    // TODO: Play hit sound
+  }, [enabled, isAvailable]);
+  
+  const playKill = useCallback(() => {
+    if (!enabled || !isAvailable) return;
+    // TODO: Play kill sound
+  }, [enabled, isAvailable]);
+  
+  const playGameOver = useCallback(() => {
+    if (!enabled || !isAvailable) return;
+    // TODO: Play game over sound
+    console.log('[Sound] Game over');
+  }, [enabled, isAvailable]);
+  
+  return useMemo(() => ({
+    playPlace,
+    playUpgrade,
+    playShoot,
+    playHit,
+    playKill,
+    playGameOver,
+  }), [playPlace, playUpgrade, playShoot, playHit, playKill, playGameOver]);
+}
+
+export default useSound;

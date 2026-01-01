@@ -1,369 +1,326 @@
-import React from 'react';
+/**
+ * Lane Component
+ * Renders the S-curve path with Solana-themed background
+ */
+
+import React, { useMemo } from 'react';
+import { View, StyleSheet, Text } from 'react-native';
 import Svg, {
   Path,
-  Circle,
-  Rect,
-  Line,
   Defs,
   LinearGradient,
-  RadialGradient,
   Stop,
+  RadialGradient,
+  Circle,
+  Rect,
   G,
+  Polygon,
   Text as SvgText,
 } from 'react-native-svg';
-import {
-  GAME_WIDTH,
-  GAME_HEIGHT,
-  PATH_WAYPOINTS,
-  LANE_WIDTH,
-  COLORS,
-  BASE_X,
-  BASE_Y,
-} from '../game/config';
-import { getPositionAlongPath } from '../game/engine';
+import { COLORS, PATH_WAYPOINTS, getPathPoints, BIOME, GAME_CONFIG } from '../game/config';
 
 interface LaneProps {
-  timeMarkerProgress: number; // 0-1
+  width: number;
+  height: number;
+  timeMarkerProgress: number;
 }
 
-/**
- * Renders the S-curve lane with Solana Breakpoint theming
- */
-export const Lane: React.FC<LaneProps> = React.memo(({ timeMarkerProgress }) => {
-  // Generate smooth path string from waypoints
-  const pathD = generateSmoothPath(PATH_WAYPOINTS);
+export const Lane: React.FC<LaneProps> = ({ width, height, timeMarkerProgress }) => {
+  // Generate smooth path from waypoints
+  const pathPoints = useMemo(() => getPathPoints(width, height), [width, height]);
   
-  // Get marker position along path
-  const markerPos = getPositionAlongPath(timeMarkerProgress);
+  // Create SVG path string with bezier curves
+  const pathData = useMemo(() => {
+    if (pathPoints.length < 2) return '';
+    
+    let d = `M ${pathPoints[0].x} ${pathPoints[0].y}`;
+    
+    for (let i = 1; i < pathPoints.length; i++) {
+      const prev = pathPoints[i - 1];
+      const curr = pathPoints[i];
+      const next = pathPoints[i + 1];
+      
+      // Calculate control points for smooth bezier curve
+      const cp1x = prev.x + (curr.x - prev.x) * 0.5;
+      const cp1y = prev.y;
+      const cp2x = prev.x + (curr.x - prev.x) * 0.5;
+      const cp2y = curr.y;
+      
+      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${curr.x} ${curr.y}`;
+    }
+    
+    return d;
+  }, [pathPoints]);
   
+  // Calculate time marker position along the path
+  const timeMarkerPos = useMemo(() => {
+    const totalLength = pathPoints.length - 1;
+    const index = timeMarkerProgress * totalLength;
+    const i = Math.floor(index);
+    const t = index - i;
+    
+    if (i >= pathPoints.length - 1) {
+      return pathPoints[pathPoints.length - 1];
+    }
+    
+    const p1 = pathPoints[i];
+    const p2 = pathPoints[i + 1];
+    
+    return {
+      x: p1.x + (p2.x - p1.x) * t,
+      y: p1.y + (p2.y - p1.y) * t,
+    };
+  }, [pathPoints, timeMarkerProgress]);
+  
+  // Generate background grid pattern
+  const gridLines = useMemo(() => {
+    const lines = [];
+    const spacing = 40;
+    
+    // Vertical lines
+    for (let x = 0; x < width; x += spacing) {
+      lines.push({ x1: x, y1: 0, x2: x, y2: height, key: `v${x}` });
+    }
+    // Horizontal lines
+    for (let y = 0; y < height; y += spacing) {
+      lines.push({ x1: 0, y1: y, x2: width, y2: y, key: `h${y}` });
+    }
+    
+    return lines;
+  }, [width, height]);
+  
+  // Generate random "stars" (small dots for space effect)
+  const stars = useMemo(() => {
+    const starList = [];
+    const count = 50;
+    // Use deterministic positions based on width/height
+    for (let i = 0; i < count; i++) {
+      const seed = i * 12345.6789;
+      starList.push({
+        x: (Math.sin(seed) * 0.5 + 0.5) * width,
+        y: (Math.cos(seed * 2) * 0.5 + 0.5) * height,
+        size: 1 + (i % 3),
+        opacity: 0.3 + (i % 4) * 0.15,
+        key: `star${i}`,
+      });
+    }
+    return starList;
+  }, [width, height]);
+  
+  // Solana logo positions for decoration
+  const solanaLogos = useMemo(() => {
+    return [
+      { x: width * 0.08, y: height * 0.08, size: 35, opacity: 0.15 },
+      { x: width * 0.92, y: height * 0.12, size: 28, opacity: 0.12 },
+      { x: width * 0.15, y: height * 0.88, size: 32, opacity: 0.1 },
+      { x: width * 0.85, y: height * 0.92, size: 40, opacity: 0.15 },
+      { x: width * 0.5, y: height * 0.05, size: 25, opacity: 0.08 },
+    ];
+  }, [width, height]);
+
   return (
-    <Svg
-      width={GAME_WIDTH}
-      height={GAME_HEIGHT}
-      style={{ position: 'absolute', top: 0, left: 0 }}
-    >
-      <Defs>
-        {/* Background gradient */}
-        <LinearGradient id="bgGradient" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#0a0a12" />
-          <Stop offset="0.3" stopColor="#0D0D0D" />
-          <Stop offset="0.7" stopColor="#1a1a2e" />
-          <Stop offset="1" stopColor="#0f0f1a" />
-        </LinearGradient>
+    <View style={[styles.container, { width, height }]}>
+      <Svg width={width} height={height}>
+        <Defs>
+          {/* Background gradient */}
+          <LinearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor={COLORS.bgDarker} />
+            <Stop offset="50%" stopColor={COLORS.bgDark} />
+            <Stop offset="100%" stopColor="#0A0A1A" />
+          </LinearGradient>
+          
+          {/* Path gradient (purple to green) */}
+          <LinearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <Stop offset="0%" stopColor={COLORS.solanaPurple} />
+            <Stop offset="50%" stopColor={COLORS.solanaPink} />
+            <Stop offset="100%" stopColor={COLORS.solanaGreen} />
+          </LinearGradient>
+          
+          {/* Path inner gradient */}
+          <LinearGradient id="pathInner" x1="0%" y1="0%" x2="100%" y2="0%">
+            <Stop offset="0%" stopColor="#1A0A2E" />
+            <Stop offset="100%" stopColor="#0A1A1A" />
+          </LinearGradient>
+          
+          {/* Time marker glow */}
+          <RadialGradient id="markerGlow" cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor={COLORS.solanaPink} stopOpacity="0.8" />
+            <Stop offset="70%" stopColor={COLORS.solanaPurple} stopOpacity="0.3" />
+            <Stop offset="100%" stopColor={COLORS.solanaPurple} stopOpacity="0" />
+          </RadialGradient>
+          
+          {/* Solana gradient for logos */}
+          <LinearGradient id="solanaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor={COLORS.solanaGreen} />
+            <Stop offset="50%" stopColor={COLORS.solanaPurple} />
+            <Stop offset="100%" stopColor={COLORS.solanaPink} />
+          </LinearGradient>
+          
+          {/* Grid glow effect */}
+          <LinearGradient id="gridGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor={COLORS.solanaPurple} stopOpacity="0.1" />
+            <Stop offset="50%" stopColor={COLORS.solanaPurple} stopOpacity="0.02" />
+            <Stop offset="100%" stopColor={COLORS.solanaGreen} stopOpacity="0.1" />
+          </LinearGradient>
+        </Defs>
         
-        {/* Path gradient */}
-        <LinearGradient id="pathGradient" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#14F195" stopOpacity="0.3" />
-          <Stop offset="0.5" stopColor="#9945FF" stopOpacity="0.2" />
-          <Stop offset="1" stopColor="#DC1FFF" stopOpacity="0.3" />
-        </LinearGradient>
+        {/* Background */}
+        <Rect x={0} y={0} width={width} height={height} fill="url(#bgGradient)" />
         
-        {/* Path stroke gradient */}
-        <LinearGradient id="strokeGradient" x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0" stopColor="#14F195" />
-          <Stop offset="0.5" stopColor="#9945FF" />
-          <Stop offset="1" stopColor="#DC1FFF" />
-        </LinearGradient>
-        
-        {/* Glow effect */}
-        <RadialGradient id="glowGradient" cx="0.5" cy="0.5" r="0.5">
-          <Stop offset="0" stopColor="#14F195" stopOpacity="0.5" />
-          <Stop offset="1" stopColor="#14F195" stopOpacity="0" />
-        </RadialGradient>
-        
-        {/* Base glow */}
-        <RadialGradient id="baseGlow" cx="0.5" cy="0.5" r="0.5">
-          <Stop offset="0" stopColor="#14F195" stopOpacity="0.8" />
-          <Stop offset="0.5" stopColor="#14F195" stopOpacity="0.3" />
-          <Stop offset="1" stopColor="#14F195" stopOpacity="0" />
-        </RadialGradient>
-      </Defs>
-      
-      {/* Background */}
-      <Rect x="0" y="0" width={GAME_WIDTH} height={GAME_HEIGHT} fill="url(#bgGradient)" />
-      
-      {/* Grid pattern - Solana circuit board style */}
-      <G opacity={0.08}>
-        {[...Array(20)].map((_, i) => (
-          <Line
-            key={`h${i}`}
-            x1="0"
-            y1={i * 35}
-            x2={GAME_WIDTH}
-            y2={i * 35}
-            stroke={COLORS.primary}
+        {/* Grid pattern */}
+        {gridLines.map(line => (
+          <Path
+            key={line.key}
+            d={`M ${line.x1} ${line.y1} L ${line.x2} ${line.y2}`}
+            stroke={COLORS.solanaPurple}
             strokeWidth={0.5}
+            strokeOpacity={0.08}
           />
         ))}
-        {[...Array(12)].map((_, i) => (
-          <Line
-            key={`v${i}`}
-            x1={i * 35}
-            y1="0"
-            x2={i * 35}
-            y2={GAME_HEIGHT}
-            stroke={COLORS.primary}
-            strokeWidth={0.5}
+        
+        {/* Stars/particles */}
+        {stars.map(star => (
+          <Circle
+            key={star.key}
+            cx={star.x}
+            cy={star.y}
+            r={star.size}
+            fill={COLORS.solanaGreen}
+            opacity={star.opacity}
           />
         ))}
-      </G>
-      
-      {/* Decorative Solana logo patterns */}
-      <G opacity={0.05}>
-        <SolanaLogo x={50} y={50} size={40} />
-        <SolanaLogo x={320} y={100} size={30} />
-        <SolanaLogo x={30} y={400} size={25} />
-        <SolanaLogo x={350} y={500} size={35} />
-      </G>
-      
-      {/* Conference name */}
-      <SvgText
-        x={GAME_WIDTH / 2}
-        y={30}
-        fontSize={12}
-        fill={COLORS.primary}
-        textAnchor="middle"
-        opacity={0.4}
-        fontWeight="bold"
-      >
-        SOLANA BREAKPOINT 2024
-      </SvgText>
-      
-      {/* Main path glow */}
-      <Path
-        d={pathD}
-        stroke="#14F195"
-        strokeWidth={LANE_WIDTH + 20}
-        strokeOpacity={0.1}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      
-      {/* Main path fill */}
-      <Path
-        d={pathD}
-        stroke="url(#pathGradient)"
-        strokeWidth={LANE_WIDTH}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      
-      {/* Path border - outer */}
-      <Path
-        d={pathD}
-        stroke="#9945FF"
-        strokeWidth={LANE_WIDTH + 4}
-        strokeOpacity={0.5}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      
-      {/* Path inner edge */}
-      <Path
-        d={pathD}
-        stroke={COLORS.background}
-        strokeWidth={LANE_WIDTH - 4}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      
-      {/* Path center line (direction indicator) */}
-      <Path
-        d={pathD}
-        stroke="#14F195"
-        strokeWidth={2}
-        strokeOpacity={0.3}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeDasharray="10,15"
-      />
-      
-      {/* Spawn point */}
-      <G>
+        
+        {/* Decorative Solana logos */}
+        {solanaLogos.map((logo, i) => (
+          <G key={`logo${i}`} transform={`translate(${logo.x - logo.size/2}, ${logo.y - logo.size/2})`}>
+            {/* Simplified Solana logo (3 parallelograms) */}
+            <Polygon
+              points={`0,${logo.size*0.3} ${logo.size*0.15},0 ${logo.size},0 ${logo.size*0.85},${logo.size*0.3}`}
+              fill="url(#solanaGradient)"
+              opacity={logo.opacity}
+            />
+            <Polygon
+              points={`0,${logo.size*0.5} ${logo.size*0.15},${logo.size*0.35} ${logo.size},${logo.size*0.35} ${logo.size*0.85},${logo.size*0.5}`}
+              fill="url(#solanaGradient)"
+              opacity={logo.opacity * 0.8}
+            />
+            <Polygon
+              points={`0,${logo.size*0.7} ${logo.size*0.15},${logo.size*0.55} ${logo.size},${logo.size*0.55} ${logo.size*0.85},${logo.size*0.7}`}
+              fill="url(#solanaGradient)"
+              opacity={logo.opacity * 0.6}
+            />
+          </G>
+        ))}
+        
+        {/* Path glow (outer) */}
+        <Path
+          d={pathData}
+          stroke={COLORS.solanaPurple}
+          strokeWidth={50}
+          strokeOpacity={0.15}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        
+        {/* Path border */}
+        <Path
+          d={pathData}
+          stroke="url(#pathGradient)"
+          strokeWidth={36}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        
+        {/* Path inner (dark road) */}
+        <Path
+          d={pathData}
+          stroke="url(#pathInner)"
+          strokeWidth={28}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        
+        {/* Center line (dashed) */}
+        <Path
+          d={pathData}
+          stroke={COLORS.solanaGreen}
+          strokeWidth={2}
+          strokeDasharray="8 12"
+          strokeOpacity={0.4}
+          fill="none"
+          strokeLinecap="round"
+        />
+        
+        {/* Time marker glow */}
         <Circle
-          cx={PATH_WAYPOINTS[0].x + 30}
-          cy={PATH_WAYPOINTS[0].y}
-          r={25}
-          fill="#FF4757"
-          opacity={0.3}
+          cx={timeMarkerPos.x}
+          cy={timeMarkerPos.y}
+          r={60}
+          fill="url(#markerGlow)"
         />
+        
+        {/* Time marker line (vertical) */}
+        <Path
+          d={`M ${timeMarkerPos.x} ${timeMarkerPos.y - 40} L ${timeMarkerPos.x} ${timeMarkerPos.y + 40}`}
+          stroke={COLORS.solanaPink}
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeOpacity={0.8}
+        />
+        
+        {/* Time marker center */}
         <Circle
-          cx={PATH_WAYPOINTS[0].x + 30}
-          cy={PATH_WAYPOINTS[0].y}
-          r={15}
-          fill="#FF4757"
-          opacity={0.6}
-        />
-        <SvgText
-          x={PATH_WAYPOINTS[0].x + 30}
-          y={PATH_WAYPOINTS[0].y + 4}
-          fontSize={10}
-          fill="#fff"
-          textAnchor="middle"
-          fontWeight="bold"
-        >
-          ⚠
-        </SvgText>
-      </G>
-      
-      {/* Base (endpoint) */}
-      <G>
-        <Circle
-          cx={BASE_X}
-          cy={BASE_Y}
-          r={40}
-          fill="url(#baseGlow)"
-        />
-        <Rect
-          x={BASE_X - 20}
-          y={BASE_Y - 30}
-          width={40}
-          height={60}
-          rx={8}
-          fill={COLORS.primary}
-          opacity={0.9}
-        />
-        <Rect
-          x={BASE_X - 14}
-          y={BASE_Y - 24}
-          width={28}
-          height={48}
-          rx={4}
-          fill="#0D0D0D"
-          opacity={0.5}
-        />
-        <SvgText
-          x={BASE_X}
-          y={BASE_Y + 5}
-          fontSize={16}
-          fill="#fff"
-          textAnchor="middle"
-          fontWeight="bold"
-        >
-          ⚡
-        </SvgText>
-      </G>
-      
-      {/* Time marker - moving indicator */}
-      <G>
-        <Circle
-          cx={markerPos.x}
-          cy={markerPos.y}
-          r={20}
-          fill="#DC1FFF"
-          opacity={0.3}
-        />
-        <Circle
-          cx={markerPos.x}
-          cy={markerPos.y}
+          cx={timeMarkerPos.x}
+          cy={timeMarkerPos.y}
           r={8}
-          fill="#DC1FFF"
-          stroke="#fff"
+          fill={COLORS.solanaPink}
+          stroke={COLORS.text}
           strokeWidth={2}
         />
-      </G>
+        
+        {/* "LOCKED" label for passed area */}
+        {timeMarkerProgress > 0.15 && (
+          <SvgText
+            x={timeMarkerPos.x - 80}
+            y={timeMarkerPos.y - 50}
+            fill={COLORS.solanaPink}
+            fontSize={10}
+            fontWeight="bold"
+            opacity={0.7}
+          >
+            ◀ LOCKED
+          </SvgText>
+        )}
+      </Svg>
       
-      {/* Marker trail line */}
-      <Path
-        d={generatePartialPath(PATH_WAYPOINTS, timeMarkerProgress)}
-        stroke="#DC1FFF"
-        strokeWidth={3}
-        strokeOpacity={0.5}
-        fill="none"
-        strokeLinecap="round"
-      />
-    </Svg>
+      {/* Conference name watermark */}
+      <View style={styles.watermark}>
+        <Text style={styles.watermarkText}>SOLANA BREAKPOINT</Text>
+      </View>
+    </View>
   );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  watermark: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    opacity: 0.15,
+  },
+  watermarkText: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 4,
+  },
 });
 
-/**
- * Simple Solana logo shape
- */
-const SolanaLogo: React.FC<{ x: number; y: number; size: number }> = ({ x, y, size }) => (
-  <G transform={`translate(${x}, ${y})`}>
-    <Path
-      d={`M0,${size * 0.2} L${size},0 L${size},${size * 0.25} L0,${size * 0.45} Z`}
-      fill={COLORS.primary}
-    />
-    <Path
-      d={`M0,${size * 0.4} L${size},${size * 0.2} L${size},${size * 0.45} L0,${size * 0.65} Z`}
-      fill={COLORS.secondary}
-    />
-    <Path
-      d={`M0,${size * 0.6} L${size},${size * 0.4} L${size},${size * 0.65} L0,${size * 0.85} Z`}
-      fill={COLORS.tertiary}
-    />
-  </G>
-);
-
-/**
- * Generate smooth SVG path from waypoints using bezier curves
- */
-function generateSmoothPath(waypoints: { x: number; y: number }[]): string {
-  if (waypoints.length < 2) return '';
-  
-  let d = `M ${waypoints[0].x} ${waypoints[0].y}`;
-  
-  for (let i = 1; i < waypoints.length; i++) {
-    const prev = waypoints[i - 1];
-    const curr = waypoints[i];
-    const next = waypoints[i + 1];
-    
-    if (i === 1) {
-      // First segment - quadratic curve
-      const cp = {
-        x: (prev.x + curr.x) / 2,
-        y: (prev.y + curr.y) / 2,
-      };
-      d += ` Q ${cp.x} ${cp.y} ${curr.x} ${curr.y}`;
-    } else if (next) {
-      // Middle segments - smooth curve through point
-      const cp1 = {
-        x: prev.x + (curr.x - waypoints[i - 2].x) * 0.2,
-        y: prev.y + (curr.y - waypoints[i - 2].y) * 0.2,
-      };
-      const cp2 = {
-        x: curr.x - (next.x - prev.x) * 0.2,
-        y: curr.y - (next.y - prev.y) * 0.2,
-      };
-      d += ` C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${curr.x} ${curr.y}`;
-    } else {
-      // Last segment
-      d += ` L ${curr.x} ${curr.y}`;
-    }
-  }
-  
-  return d;
-}
-
-/**
- * Generate partial path up to a certain progress
- */
-function generatePartialPath(waypoints: { x: number; y: number }[], progress: number): string {
-  if (progress <= 0 || waypoints.length < 2) return '';
-  
-  const totalSegments = waypoints.length - 1;
-  const segmentProgress = progress * totalSegments;
-  const endSegment = Math.min(Math.floor(segmentProgress), totalSegments - 1);
-  const t = segmentProgress - endSegment;
-  
-  // Get waypoints up to current progress
-  const partialWaypoints = waypoints.slice(0, endSegment + 1);
-  
-  // Add interpolated end point
-  if (endSegment < totalSegments) {
-    const start = waypoints[endSegment];
-    const end = waypoints[endSegment + 1];
-    partialWaypoints.push({
-      x: start.x + (end.x - start.x) * t,
-      y: start.y + (end.y - start.y) * t,
-    });
-  }
-  
-  return generateSmoothPath(partialWaypoints);
-}
+export default Lane;
