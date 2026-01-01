@@ -10,3 +10,4 @@ export { HUD } from './HUD';
 export { ShareCard } from './ShareCard';
 export { Sidebar } from './Sidebar';
 export { SafeArea } from './SafeArea';
+export { ZoomableView } from './ZoomableView';

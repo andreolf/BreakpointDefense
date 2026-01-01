@@ -1,10 +1,11 @@
 /**
  * GameScreen
  * Main game - tap anywhere along the path to place towers!
+ * Now with pinch-to-zoom and pan!
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, StyleSheet, Dimensions, Text, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
+import { View, StyleSheet, Dimensions, Text, TouchableOpacity } from 'react-native';
 import { SafeArea } from '../components/SafeArea';
 import { GameState, Tower, GameSettings } from '../game/types';
 import { TowerType, GAME_CONFIG, TOWER_CONFIGS } from '../game/config';
@@ -27,6 +28,7 @@ import { EnemyView } from '../components/EnemyView';
 import { ProjectileView } from '../components/ProjectileView';
 import { BaseView } from '../components/BaseView';
 import { Sidebar } from '../components/Sidebar';
+import { ZoomableView } from '../components/ZoomableView';
 
 interface GameScreenProps {
   onGameOver: (time: number, wave: number, kills: number, solEarned: number) => void;
@@ -83,16 +85,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
     }
   }, [gameState.gameOver]);
 
-  // Handle tap on game area - place tower or select existing
-  const handleGamePress = useCallback((event: any) => {
-    const { locationX, locationY } = event.nativeEvent;
-    
+  // Handle tap on game area (coordinates already transformed by ZoomableView)
+  const handleGameTap = useCallback((x: number, y: number) => {
     // Check if tapped on existing tower first
     for (const tower of gameState.towers) {
       const dist = Math.sqrt(
-        Math.pow(locationX - tower.x, 2) + Math.pow(locationY - tower.y, 2)
+        Math.pow(x - tower.x, 2) + Math.pow(y - tower.y, 2)
       );
-      if (dist < GAME_CONFIG.slotRadius + 10) {
+      if (dist < GAME_CONFIG.slotRadius + 15) {
         // Selected existing tower
         setSelectedTower(tower);
         setSelectedTowerType(null);
@@ -104,8 +104,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
     if (selectedTowerType) {
       const result = canPlaceTowerAt(
         gameState,
-        locationX,
-        locationY,
+        x,
+        y,
         selectedTowerType,
         gameWidth,
         gameHeight
@@ -115,7 +115,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
         haptics.onTowerPlace();
         sound.playPlace();
         setGameState(prev => 
-          placeTowerAt(prev, locationX, locationY, selectedTowerType, gameWidth, gameHeight)
+          placeTowerAt(prev, x, y, selectedTowerType, gameWidth, gameHeight)
         );
         // Keep tower type selected for quick placement
       }
@@ -128,7 +128,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
   // Handle tower type selection from sidebar
   const handleSelectTowerType = useCallback((type: TowerType) => {
     if (selectedTowerType === type) {
-      setSelectedTowerType(null); // Toggle off
+      setSelectedTowerType(null);
     } else {
       setSelectedTowerType(type);
       setSelectedTower(null);
@@ -161,8 +161,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
   return (
     <SafeArea style={styles.container} edges={['top']}>
       <View style={styles.mainLayout}>
-        {/* Game Area */}
-        <TouchableWithoutFeedback onPress={handleGamePress}>
+        {/* Zoomable Game Area */}
+        <ZoomableView
+          width={gameWidth}
+          height={gameHeight}
+          onTap={handleGameTap}
+        >
           <View style={[styles.gameWorld, { width: gameWidth, height: gameHeight }]}>
             {/* Lane background */}
             <Lane
@@ -197,17 +201,17 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
               gameWidth={gameWidth}
               gameHeight={gameHeight}
             />
-
-            {/* Placement hint */}
-            {selectedTowerType && (
-              <View style={styles.placementHint}>
-                <Text style={styles.placementHintText}>
-                  Tap near the path to place {TOWER_CONFIGS[selectedTowerType].icon}
-                </Text>
-              </View>
-            )}
           </View>
-        </TouchableWithoutFeedback>
+        </ZoomableView>
+
+        {/* Placement hint overlay */}
+        {selectedTowerType && (
+          <View style={styles.placementHint} pointerEvents="none">
+            <Text style={styles.placementHintText}>
+              Tap near the path to place {TOWER_CONFIGS[selectedTowerType].icon} {TOWER_CONFIGS[selectedTowerType].name}
+            </Text>
+          </View>
+        )}
 
         {/* Sidebar */}
         <Sidebar
@@ -239,13 +243,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, settings }) 
                 1️⃣ Select a tower in the sidebar
               </Text>
               <Text style={styles.pauseInfoText}>
-                2️⃣ Tap anywhere near the path to place it
+                2️⃣ Tap near the path to place it
               </Text>
               <Text style={styles.pauseInfoText}>
-                3️⃣ Tap a tower to select, then upgrade in sidebar
+                3️⃣ Tap a tower to select and upgrade
               </Text>
               <Text style={styles.pauseInfoText}>
-                🆙 Upgrades increase damage, fire rate, AND range!
+                🔍 Pinch to zoom, drag to pan
+              </Text>
+              <Text style={styles.pauseInfoText}>
+                🆙 Upgrades boost damage, speed, AND range!
               </Text>
             </View>
             
@@ -270,13 +277,12 @@ const styles = StyleSheet.create({
   },
   gameWorld: {
     backgroundColor: COLORS.bgDark,
-    overflow: 'hidden',
   },
   placementHint: {
     position: 'absolute',
     top: 10,
     left: 10,
-    right: 10,
+    right: SIDEBAR_WIDTH + 10,
     backgroundColor: 'rgba(153, 69, 255, 0.9)',
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -284,7 +290,7 @@ const styles = StyleSheet.create({
   },
   placementHintText: {
     color: COLORS.text,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -313,7 +319,7 @@ const styles = StyleSheet.create({
   },
   pauseInfo: {
     marginBottom: 30,
-    gap: 12,
+    gap: 10,
   },
   pauseInfoText: {
     fontSize: 14,
