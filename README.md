@@ -1,6 +1,6 @@
 # ⚡ Solana Breakpoint Defense
 
-A hypercasual tower defense game built with Expo React Native, themed around the Solana Breakpoint conference.
+A hypercasual tower defense game built with Expo React Native, themed around the Solana Breakpoint conference. Defend the network from FUD, Rug Pulls, and Network Congestion!
 
 ![Solana Breakpoint Defense](https://img.shields.io/badge/Solana-Breakpoint-14F195?style=for-the-badge&logo=solana)
 ![Expo](https://img.shields.io/badge/Expo-SDK_52-000020?style=for-the-badge&logo=expo)
@@ -8,52 +8,53 @@ A hypercasual tower defense game built with Expo React Native, themed around the
 
 ## 🎮 Gameplay
 
-Defend your base from waves of enemies traveling along an S-curved path! Place towers strategically, upgrade them, and survive as long as possible to climb the tier ranks.
+Defend the Solana network from waves of crypto threats traveling along an S-curved path! Deploy ecosystem project towers, upgrade them, and survive as long as possible to climb the tier ranks.
 
 ### Features
 
-- **S-Curve Path**: Enemies follow a winding path through the conference venue
-- **3 Tower Types**: Fast Turret, Chain Tower, Splash Tower
-- **3 Enemy Types**: Swarm (fast), Tank (tough), MiniBoss (every 60s)
-- **Future-Only Placement**: A time marker progresses along the path - place towers before it passes!
+- **S-Curve Path**: Enemies follow a winding path with Solana-themed gradients
+- **Solana Ecosystem Towers**: Validator Node, Jupiter Aggregator, Tensor Marketplace
+- **Crypto-Themed Enemies**: FUD, Rug Pulls, Network Congestion
+- **SOL Currency**: Earn SOL by defeating enemies
+- **Future-Only Placement**: Time marker mechanic - place towers before it passes!
 - **Upgrade System**: Level up towers to max level 3
-- **Tier System**: Earn ranks from Attendee to Conference Legend
+- **Crypto Tier Ranks**: Paper Hands → Diamond Hands → Degen → Whale → Satoshi
 - **Local Leaderboard**: Top 10 scores saved locally
-- **Share Card**: Generate and share your scores (mobile only)
-- **Solana Theming**: Purple/green gradients, conference branding
+- **Share Card**: Generate and share your scores
+- **Solana Branding**: Purple/green gradients, ecosystem iconography
 
-### Tower Types
+### Tower Types (Solana Ecosystem)
 
-| Tower | Cost | Damage | Fire Rate | Special |
-|-------|------|--------|-----------|---------|
-| ⚡ Fast Turret | 50 | 8/12/18 | 3-5/s | High fire rate |
-| 🔗 Chain Tower | 80 | 15/22/32 | 1.2-1.8/s | Chains to 2 enemies |
-| 💥 Splash Tower | 100 | 25/40/60 | 0.7-1/s | Area damage |
+| Tower | Icon | Cost | Damage | Special |
+|-------|------|------|--------|---------|
+| ⚡ Validator Node | ⚡ | 50 SOL | 8/12/18 | High TPS (fast fire rate) |
+| 🪐 Jupiter Aggregator | 🪐 | 80 SOL | 15/22/32 | Routes damage (chains to 2 enemies) |
+| 💎 Tensor Marketplace | 💎 | 100 SOL | 25/40/60 | Floor sweep (splash damage) |
 
-### Enemy Types
+### Enemy Types (Crypto Threats)
 
-| Enemy | HP | Speed | Reward |
-|-------|-----|-------|--------|
-| 🔴 Swarm | 25 | Fast | 10 |
-| 🟥 Tank | 120 | Slow | 30 |
-| 🟣 MiniBoss | 300 | Medium | 100 |
+| Enemy | Icon | HP | Speed | Description |
+|-------|------|-----|-------|-------------|
+| 😱 FUD | 😱 | 25 | Fast | Fear, Uncertainty, Doubt |
+| 🧹 Rug Pull | 🧹 | 120 | Slow | Tanky scam attempts |
+| 🚧 Network Congestion | 🚧 | 300 | Medium | Mini-boss (every 60s) |
 
-### Tier Thresholds
+### Tier Ranks
 
-| Tier | Time Survived |
-|------|---------------|
-| ⬜ Attendee | 0-90s |
-| 🟩 Builder | 90-180s |
-| 🟦 Core Contributor | 180-300s |
-| 🟪 Infra Guardian | 300-420s |
-| 🟨 Conference Legend | 420s+ |
+| Tier | Icon | Time Survived | Description |
+|------|------|---------------|-------------|
+| 📄 Paper Hands | 📄 | 0-90s | Just getting started |
+| 💎 Diamond Hands | 💎 | 90-180s | Holding strong |
+| 🎰 Degen | 🎰 | 180-300s | True believer |
+| 🐋 Whale | 🐋 | 300-420s | Major player |
+| 👑 Satoshi | 👑 | 420s+ | Legendary status |
 
 ## 🚀 Quick Start
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/breakpoint-defense.git
-cd breakpoint-defense
+git clone https://github.com/andreolf/BreakpointDefense.git
+cd BreakpointDefense
 
 # Install dependencies
 npm install
@@ -82,21 +83,21 @@ breakpoint-defense/
 ├── src/
 │   ├── game/
 │   │   ├── types.ts          # TypeScript interfaces
-│   │   ├── config.ts         # Game constants, path waypoints
+│   │   ├── config.ts         # Game constants, path waypoints, Solana theming
 │   │   └── engine.ts         # Core game loop, path movement
 │   ├── screens/
-│   │   ├── HomeScreen.tsx    # Main menu
+│   │   ├── HomeScreen.tsx    # Main menu with Solana branding
 │   │   ├── GameScreen.tsx    # Gameplay
 │   │   ├── GameOverScreen.tsx# Results + share
 │   │   └── LeaderboardScreen.tsx
 │   ├── components/
-│   │   ├── Lane.tsx          # S-curve path rendering
+│   │   ├── Lane.tsx          # S-curve path with gradients
 │   │   ├── TowerSlotView.tsx # Tower placement
-│   │   ├── EnemyView.tsx     # Enemy rendering
+│   │   ├── EnemyView.tsx     # Crypto-themed enemies
 │   │   ├── ProjectileView.tsx
-│   │   ├── BaseView.tsx      # Player base
+│   │   ├── BaseView.tsx      # Solana Network node
 │   │   ├── TowerSelectPopup.tsx
-│   │   ├── HUD.tsx           # Game stats
+│   │   ├── HUD.tsx           # Game stats with SOL display
 │   │   ├── ShareCard.tsx     # Social share card
 │   │   └── SafeArea.tsx      # Cross-platform safe area
 │   ├── hooks/
@@ -122,7 +123,7 @@ breakpoint-defense/
 
 ### Path System
 - Enemies follow waypoints defined in `PATH_WAYPOINTS`
-- Smooth bezier curve interpolation between points
+- Smooth interpolation between points
 - Path progress tracked as 0-1 value
 
 ### Collision Detection
@@ -136,18 +137,26 @@ The game uses Solana's brand colors:
 - **Primary**: `#14F195` (Solana Green)
 - **Secondary**: `#9945FF` (Solana Purple)
 - **Tertiary**: `#DC1FFF` (Solana Pink)
+- **Blue**: `#00D1FF` (Solana Blue)
+
+### Visual Features
+- Gradient backgrounds with grid patterns
+- Glowing effects on towers and projectiles
+- Animated S-curve path with pulsing time marker
+- Solana logos as decorative elements
+- Crypto-themed enemy designs (spiky FUD, carpet rug pulls, warning triangles)
 
 ## 📦 Dependencies
 
 | Package | Purpose |
 |---------|---------|
 | expo | Development platform |
-| react-native-svg | Vector graphics |
-| @react-native-async-storage/async-storage | Local storage |
-| react-native-view-shot | Screenshot capture |
+| react-native-svg | Vector graphics for all game elements |
+| @react-native-async-storage/async-storage | Local storage for leaderboard |
+| react-native-view-shot | Screenshot capture for sharing |
 | expo-sharing | Native share sheet |
 | expo-haptics | Haptic feedback |
-| expo-av | Audio (stubbed) |
+| expo-av | Audio (stubbed for now) |
 
 ## 🔧 Configuration
 
@@ -155,12 +164,17 @@ Key game parameters in `src/game/config.ts`:
 
 ```typescript
 // Adjust difficulty
-export const BASE_SPAWN_INTERVAL = 2000;  // ms between spawns
-export const SPAWN_INTERVAL_DECAY = 0.92; // faster each wave
-export const HP_SCALE_PER_WAVE = 1.08;    // enemies get tougher
+export const GAME_CONFIG = {
+  baseSpawnInterval: 2000,    // ms between spawns
+  spawnIntervalDecay: 0.92,   // faster each wave
+  hpScalePerWave: 1.08,       // enemies get tougher
+  startingSOL: 150,           // starting currency
+  startingBaseHP: 100,        // network health
+};
 
 // Biome modifiers
 export const BIOME = {
+  name: 'Solana Breakpoint',
   spawnRateMultiplier: 1.25,  // 25% faster spawns
   enemySpeedMultiplier: 1.1,  // 10% faster enemies
 };
@@ -171,11 +185,13 @@ export const BIOME = {
 - [ ] Add actual sound effects
 - [ ] Add background music
 - [ ] More biomes (Hacker House, Main Stage, etc.)
+- [ ] More tower types (Phantom, Marinade, Jito)
+- [ ] More enemy types (Exploits, Bear Markets)
 - [ ] Achievements system
 - [ ] Tutorial mode
-- [ ] More tower types
 - [ ] Special abilities
 - [ ] Online leaderboard
+- [ ] NFT integration for scores
 
 ## 🤝 Contributing
 
@@ -188,3 +204,5 @@ MIT License - feel free to use this for your own projects!
 ---
 
 Built with ❤️ for the Solana community
+
+**#SolanaBreakpoint #TowerDefense #Web3Gaming**
