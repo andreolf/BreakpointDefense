@@ -252,12 +252,17 @@ function createEnemy(
 }
 
 // ============================================
-// TIME MARKER SYSTEM
+// TIME MARKER SYSTEM (DISABLED - was confusing)
 // ============================================
 
 function updateTimeMarker(state: GameState, deltaTime: number): GameState {
+  // Time marker disabled for simpler gameplay
+  if (!GAME_CONFIG.timeMarkerEnabled) {
+    return state;
+  }
+  
   const deltaSeconds = deltaTime / 1000;
-  const markerSpeed = GAME_CONFIG.timeMarkerSpeed / 1000; // Convert to progress per second
+  const markerSpeed = GAME_CONFIG.timeMarkerSpeed / 1000;
   const newMarkerProgress = Math.min(state.timeMarkerProgress + markerSpeed * deltaSeconds, 1);
   
   // Lock slots that the marker has passed

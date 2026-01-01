@@ -7,4 +7,5 @@ export { BaseView } from './BaseView';
 export { TowerSelectPopup } from './TowerSelectPopup';
 export { HUD } from './HUD';
 export { ShareCard } from './ShareCard';
-
+export { Sidebar } from './Sidebar';
+export { SafeArea } from './SafeArea';

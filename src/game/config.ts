@@ -8,11 +8,12 @@ import { Dimensions } from 'react-native';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // =============================================================================
-// LAYOUT
+// LAYOUT - Now with sidebar
 // =============================================================================
-export const GAME_WIDTH = SCREEN_WIDTH;
-export const GAME_HEIGHT = SCREEN_HEIGHT * 0.75;
-export const HUD_HEIGHT = SCREEN_HEIGHT * 0.1;
+export const SIDEBAR_WIDTH = 140;
+export const GAME_WIDTH = SCREEN_WIDTH - SIDEBAR_WIDTH;
+export const GAME_HEIGHT = SCREEN_HEIGHT * 0.85;
+export const HUD_HEIGHT = SCREEN_HEIGHT * 0.08;
 
 // =============================================================================
 // SOLANA BRAND COLORS
@@ -106,12 +107,12 @@ export interface TowerConfig {
 
 export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
   validator: {
-    name: 'Validator Node',
+    name: 'Validator',
     shortName: 'VAL',
-    description: 'High TPS attacks. Fast fire rate, consistent damage.',
+    description: 'Fast attacks',
     icon: '⚡',
     cost: 50,
-    range: 100,  // Smaller range for balance
+    range: 90,
     damage: [8, 12, 18],
     fireRate: [4, 5, 6],
     upgradeCost: [40, 80],
@@ -119,12 +120,12 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
     projectileColor: COLORS.solanaGreen,
   },
   jupiter: {
-    name: 'Jupiter Aggregator',
+    name: 'Jupiter',
     shortName: 'JUP',
-    description: 'Routes damage to multiple targets. Chains to nearby enemies.',
+    description: 'Chains to 2',
     icon: '🪐',
     cost: 80,
-    range: 90,
+    range: 85,
     damage: [15, 22, 32],
     fireRate: [1.5, 1.8, 2.2],
     upgradeCost: [60, 120],
@@ -132,23 +133,23 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
     projectileColor: COLORS.chain,
     special: 'chain',
     chainCount: 2,
-    chainRadius: 70,
+    chainRadius: 65,
     chainDamageReduction: 0.5,
   },
   tensor: {
-    name: 'Tensor Marketplace',
+    name: 'Tensor',
     shortName: 'TNS',
-    description: 'NFT floor sweeper. Area damage on impact.',
+    description: 'Splash area',
     icon: '💎',
     cost: 100,
-    range: 80,
+    range: 75,
     damage: [25, 40, 60],
     fireRate: [0.8, 1.0, 1.2],
     upgradeCost: [80, 150],
     color: COLORS.towerTensor,
     projectileColor: COLORS.solanaPink,
     special: 'splash',
-    splashRadius: 45,
+    splashRadius: 40,
   },
 };
 
@@ -162,50 +163,50 @@ export interface EnemyConfig {
   description: string;
   icon: string;
   hp: number;
-  speed: number;           // Pixels per second
-  reward: number;          // SOL reward on kill
-  damage: number;          // Damage to base
+  speed: number;
+  reward: number;
+  damage: number;
   color: string;
-  size: number;            // INCREASED sizes
-  spawnWeight: number;     // Probability weight
+  size: number;
+  spawnWeight: number;
 }
 
 export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
   fud: {
     name: 'FUD',
-    description: 'Fear, Uncertainty, Doubt. Fast but weak.',
+    description: 'Fast, weak',
     icon: '😱',
     hp: 25,
-    speed: 80,
+    speed: 70,
     reward: 10,
     damage: 5,
     color: COLORS.enemyFud,
-    size: 18,              // Increased from 14
+    size: 16,
     spawnWeight: 60,
   },
   rugpull: {
     name: 'Rug Pull',
-    description: 'Slow but tanky scam attempt.',
+    description: 'Slow, tanky',
     icon: '🧹',
     hp: 120,
-    speed: 30,
+    speed: 28,
     reward: 30,
     damage: 15,
     color: COLORS.enemyRugPull,
-    size: 26,              // Increased from 22
+    size: 22,
     spawnWeight: 25,
   },
   congestion: {
-    name: 'Network Congestion',
-    description: 'Mini-boss. Heavy traffic clogging the network.',
+    name: 'Congestion',
+    description: 'Mini-boss',
     icon: '🚧',
     hp: 300,
-    speed: 45,
+    speed: 40,
     reward: 100,
     damage: 30,
     color: COLORS.enemyCongestion,
-    size: 36,              // Increased from 30
-    spawnWeight: 0, // Only spawned by timer
+    size: 30,
+    spawnWeight: 0,
   },
 };
 
@@ -246,32 +247,33 @@ export const GAME_CONFIG = {
   startingBaseHP: 100,
   
   // Spawning
-  baseSpawnInterval: 2000,      // ms
-  spawnIntervalDecay: 0.92,     // Multiplier per wave
-  minSpawnInterval: 400,
-  waveInterval: 15000,          // ms between waves
-  minibossInterval: 60000,      // ms between minibosses
+  baseSpawnInterval: 2200,
+  spawnIntervalDecay: 0.93,
+  minSpawnInterval: 500,
+  waveInterval: 15000,
+  minibossInterval: 60000,
   
   // Scaling
   hpScalePerWave: 1.08,
   speedScalePerWave: 1.02,
   
-  // Time marker (future-only placement)
-  timeMarkerSpeed: 8,           // Pixels per second
+  // Time marker - DISABLED for now (was confusing)
+  timeMarkerEnabled: false,
+  timeMarkerSpeed: 5,
   
   // Projectiles
-  projectileSpeed: 350,         // Pixels per second
+  projectileSpeed: 320,
   projectileSize: 5,
   
   // Tower slots
-  slotRadius: 24,               // Tower slot visual size
-  towerOffsetFromPath: 55,      // How far towers are placed from path center
+  slotRadius: 22,
+  towerOffsetFromPath: 48,
   
   // Max tower level
   maxTowerLevel: 3,
   
   // Path width for rendering
-  pathWidth: 32,
+  pathWidth: 28,
 };
 
 // =============================================================================
@@ -281,7 +283,7 @@ export const BIOME = {
   name: 'Solana Breakpoint',
   tagline: 'Defend the Network',
   description: 'The biggest Solana conference is under attack!',
-  spawnRateMultiplier: 1.25,
+  spawnRateMultiplier: 1.2,
   enemySpeedMultiplier: 1.1,
   background: {
     primary: COLORS.bgDark,
@@ -291,27 +293,33 @@ export const BIOME = {
 };
 
 // =============================================================================
-// S-CURVE PATH WAYPOINTS
-// Defines the enemy path through the game area
+// SNAKE-LIKE S-CURVE PATH - More turns for better tower coverage!
 // =============================================================================
 export interface PathPoint {
   x: number;  // Percentage of game width (0-1)
   y: number;  // Percentage of game height (0-1)
 }
 
-// S-curve path from left to right - enemies walk ON this path
+// More curvy snake path - multiple S-turns
 export const PATH_WAYPOINTS: PathPoint[] = [
-  { x: -0.05, y: 0.3 },   // Start off-screen left
-  { x: 0.12, y: 0.3 },    // Enter
-  { x: 0.22, y: 0.22 },   // Curve up
-  { x: 0.35, y: 0.12 },   // Top of first curve
-  { x: 0.48, y: 0.25 },   // Coming down
-  { x: 0.55, y: 0.5 },    // Middle
-  { x: 0.62, y: 0.75 },   // Bottom of S
-  { x: 0.75, y: 0.88 },   // Deep bottom
-  { x: 0.88, y: 0.72 },   // Coming back up
-  { x: 0.98, y: 0.5 },    // Approach base
-  { x: 1.08, y: 0.5 },    // Base position (off-screen right)
+  { x: -0.05, y: 0.15 },   // Start off-screen
+  { x: 0.08, y: 0.15 },    // Enter top-left
+  { x: 0.18, y: 0.12 },    // Go up slightly
+  { x: 0.28, y: 0.20 },    // Start first turn down
+  { x: 0.35, y: 0.38 },    // First curve down
+  { x: 0.28, y: 0.52 },    // Loop back left
+  { x: 0.18, y: 0.58 },    // Continue left
+  { x: 0.12, y: 0.70 },    // Turn down-left
+  { x: 0.18, y: 0.82 },    // Turn right
+  { x: 0.32, y: 0.88 },    // Go right along bottom
+  { x: 0.48, y: 0.82 },    // Continue right, up slightly
+  { x: 0.58, y: 0.68 },    // Curve up
+  { x: 0.65, y: 0.50 },    // Middle section going up
+  { x: 0.72, y: 0.35 },    // Continue up
+  { x: 0.82, y: 0.28 },    // Near top-right
+  { x: 0.92, y: 0.38 },    // Turn down toward base
+  { x: 0.98, y: 0.50 },    // Approach base
+  { x: 1.08, y: 0.50 },    // Base (off-screen)
 ];
 
 // Convert percentage points to actual coordinates
@@ -323,33 +331,32 @@ export function getPathPoints(width: number, height: number): { x: number; y: nu
 }
 
 // =============================================================================
-// TOWER SLOT POSITIONS - BESIDE THE PATH (not on it)
-// Each slot has a path progress (0-1) and a side (top/bottom of path)
+// TOWER SLOT POSITIONS - More slots for the longer path
 // =============================================================================
 export interface TowerSlotConfig {
-  pathProgress: number;  // Where along the path (0-1)
-  side: 'top' | 'bottom'; // Which side of the path
+  pathProgress: number;
+  side: 'top' | 'bottom';
 }
 
-// Tower slots positioned BESIDE the path, alternating sides
+// Tower slots positioned beside the path
 export const TOWER_SLOT_CONFIGS: TowerSlotConfig[] = [
-  { pathProgress: 0.10, side: 'bottom' },
-  { pathProgress: 0.18, side: 'top' },
-  { pathProgress: 0.28, side: 'bottom' },
-  { pathProgress: 0.38, side: 'top' },
-  { pathProgress: 0.48, side: 'bottom' },
-  { pathProgress: 0.58, side: 'top' },
+  { pathProgress: 0.06, side: 'bottom' },
+  { pathProgress: 0.12, side: 'top' },
+  { pathProgress: 0.20, side: 'bottom' },
+  { pathProgress: 0.28, side: 'top' },
+  { pathProgress: 0.36, side: 'bottom' },
+  { pathProgress: 0.44, side: 'top' },
+  { pathProgress: 0.52, side: 'bottom' },
+  { pathProgress: 0.60, side: 'top' },
   { pathProgress: 0.68, side: 'bottom' },
-  { pathProgress: 0.78, side: 'top' },
-  { pathProgress: 0.88, side: 'bottom' },
+  { pathProgress: 0.76, side: 'top' },
+  { pathProgress: 0.84, side: 'bottom' },
+  { pathProgress: 0.92, side: 'top' },
 ];
 
 // =============================================================================
-// SOLANA LOGOS & ICONS (SVG paths)
+// SOLANA LOGOS & ICONS
 // =============================================================================
-export const SOLANA_LOGO_PATH = 'M5.5 14.5L10 10L14.5 14.5M5.5 10L10 5.5L14.5 10M5.5 5.5L10 1L14.5 5.5';
-
-// Famous Solana ecosystem icons
 export const ECOSYSTEM_ICONS = {
   sol: '◎',
   phantom: '👻',

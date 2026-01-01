@@ -1,6 +1,6 @@
 /**
  * Lane Component
- * Renders the S-curve path clearly - enemies walk ON this, towers are BESIDE it
+ * Renders the snake-like S-curve path - enemies walk ON this
  */
 
 import React, { useMemo } from 'react';
@@ -15,9 +15,8 @@ import Svg, {
   Rect,
   G,
   Polygon,
-  Text as SvgText,
 } from 'react-native-svg';
-import { COLORS, PATH_WAYPOINTS, getPathPoints, BIOME, GAME_CONFIG } from '../game/config';
+import { COLORS, getPathPoints, BIOME, GAME_CONFIG } from '../game/config';
 
 interface LaneProps {
   width: number;
@@ -29,7 +28,7 @@ export const Lane: React.FC<LaneProps> = ({ width, height, timeMarkerProgress })
   // Generate smooth path from waypoints
   const pathPoints = useMemo(() => getPathPoints(width, height), [width, height]);
   
-  // Create SVG path string with bezier curves for smooth S-curve
+  // Create SVG path string with bezier curves for smooth curves
   const pathData = useMemo(() => {
     if (pathPoints.length < 2) return '';
     
@@ -39,7 +38,7 @@ export const Lane: React.FC<LaneProps> = ({ width, height, timeMarkerProgress })
       const prev = pathPoints[i - 1];
       const curr = pathPoints[i];
       
-      // Calculate control points for smooth bezier curve
+      // Control points for smooth bezier
       const cp1x = prev.x + (curr.x - prev.x) * 0.5;
       const cp1y = prev.y;
       const cp2x = prev.x + (curr.x - prev.x) * 0.5;
@@ -51,30 +50,10 @@ export const Lane: React.FC<LaneProps> = ({ width, height, timeMarkerProgress })
     return d;
   }, [pathPoints]);
   
-  // Calculate time marker position along the path
-  const timeMarkerPos = useMemo(() => {
-    const totalLength = pathPoints.length - 1;
-    const index = timeMarkerProgress * totalLength;
-    const i = Math.floor(index);
-    const t = index - i;
-    
-    if (i >= pathPoints.length - 1) {
-      return pathPoints[pathPoints.length - 1];
-    }
-    
-    const p1 = pathPoints[i];
-    const p2 = pathPoints[i + 1];
-    
-    return {
-      x: p1.x + (p2.x - p1.x) * t,
-      y: p1.y + (p2.y - p1.y) * t,
-    };
-  }, [pathPoints, timeMarkerProgress]);
-  
-  // Generate background grid pattern
+  // Grid lines
   const gridLines = useMemo(() => {
     const lines = [];
-    const spacing = 50;
+    const spacing = 45;
     
     for (let x = 0; x < width; x += spacing) {
       lines.push({ x1: x, y1: 0, x2: x, y2: height, key: `v${x}` });
@@ -86,17 +65,17 @@ export const Lane: React.FC<LaneProps> = ({ width, height, timeMarkerProgress })
     return lines;
   }, [width, height]);
   
-  // Decorative dots/particles
+  // Particles
   const particles = useMemo(() => {
     const list = [];
-    const count = 30;
+    const count = 25;
     for (let i = 0; i < count; i++) {
-      const seed = i * 7654.321;
+      const seed = i * 5432.1;
       list.push({
         x: (Math.sin(seed) * 0.5 + 0.5) * width,
-        y: (Math.cos(seed * 1.5) * 0.5 + 0.5) * height,
-        size: 1 + (i % 3),
-        opacity: 0.2 + (i % 5) * 0.1,
+        y: (Math.cos(seed * 1.3) * 0.5 + 0.5) * height,
+        size: 1 + (i % 2),
+        opacity: 0.15 + (i % 4) * 0.08,
         key: `p${i}`,
       });
     }
@@ -111,40 +90,33 @@ export const Lane: React.FC<LaneProps> = ({ width, height, timeMarkerProgress })
         <Defs>
           {/* Background gradient */}
           <LinearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#050508" />
-            <Stop offset="50%" stopColor="#0A0A12" />
-            <Stop offset="100%" stopColor="#080810" />
+            <Stop offset="0%" stopColor="#040406" />
+            <Stop offset="50%" stopColor="#08080E" />
+            <Stop offset="100%" stopColor="#060608" />
           </LinearGradient>
           
-          {/* Path outer glow */}
+          {/* Path glow */}
           <LinearGradient id="pathGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-            <Stop offset="0%" stopColor={COLORS.solanaPurple} stopOpacity="0.4" />
-            <Stop offset="50%" stopColor={COLORS.solanaPink} stopOpacity="0.3" />
-            <Stop offset="100%" stopColor={COLORS.solanaGreen} stopOpacity="0.4" />
+            <Stop offset="0%" stopColor={COLORS.solanaPurple} stopOpacity="0.35" />
+            <Stop offset="50%" stopColor={COLORS.solanaPink} stopOpacity="0.25" />
+            <Stop offset="100%" stopColor={COLORS.solanaGreen} stopOpacity="0.35" />
           </LinearGradient>
           
-          {/* Path border gradient */}
+          {/* Path border */}
           <LinearGradient id="pathBorder" x1="0%" y1="0%" x2="100%" y2="0%">
             <Stop offset="0%" stopColor={COLORS.solanaPurple} />
             <Stop offset="50%" stopColor={COLORS.solanaPink} />
             <Stop offset="100%" stopColor={COLORS.solanaGreen} />
           </LinearGradient>
           
-          {/* Path fill (dark road) */}
+          {/* Path surface */}
           <LinearGradient id="pathFill" x1="0%" y1="0%" x2="100%" y2="0%">
-            <Stop offset="0%" stopColor="#12101A" />
-            <Stop offset="50%" stopColor="#0E0C14" />
-            <Stop offset="100%" stopColor="#0A1410" />
+            <Stop offset="0%" stopColor="#100E18" />
+            <Stop offset="50%" stopColor="#0C0A12" />
+            <Stop offset="100%" stopColor="#081210" />
           </LinearGradient>
           
-          {/* Time marker glow */}
-          <RadialGradient id="markerGlow" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={COLORS.solanaPink} stopOpacity="0.9" />
-            <Stop offset="50%" stopColor={COLORS.solanaPurple} stopOpacity="0.4" />
-            <Stop offset="100%" stopColor={COLORS.solanaPurple} stopOpacity="0" />
-          </RadialGradient>
-          
-          {/* Solana gradient for decorations */}
+          {/* Solana gradient */}
           <LinearGradient id="solanaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <Stop offset="0%" stopColor={COLORS.solanaGreen} />
             <Stop offset="50%" stopColor={COLORS.solanaPurple} />
@@ -155,14 +127,14 @@ export const Lane: React.FC<LaneProps> = ({ width, height, timeMarkerProgress })
         {/* Background */}
         <Rect x={0} y={0} width={width} height={height} fill="url(#bgGradient)" />
         
-        {/* Grid pattern */}
+        {/* Grid */}
         {gridLines.map(line => (
           <Path
             key={line.key}
             d={`M ${line.x1} ${line.y1} L ${line.x2} ${line.y2}`}
             stroke={COLORS.solanaPurple}
             strokeWidth={0.5}
-            strokeOpacity={0.06}
+            strokeOpacity={0.05}
           />
         ))}
         
@@ -178,42 +150,42 @@ export const Lane: React.FC<LaneProps> = ({ width, height, timeMarkerProgress })
           />
         ))}
         
-        {/* Decorative Solana logos in corners */}
-        <G transform={`translate(${width * 0.05}, ${height * 0.05})`} opacity={0.12}>
+        {/* Decorative Solana logos */}
+        <G transform={`translate(${width * 0.03}, ${height * 0.04})`} opacity={0.1}>
+          <Polygon points="0,10 5,0 32,0 27,10" fill="url(#solanaGrad)" />
+          <Polygon points="0,17 5,10 32,10 27,17" fill="url(#solanaGrad)" />
+          <Polygon points="0,24 5,17 32,17 27,24" fill="url(#solanaGrad)" />
+        </G>
+        
+        <G transform={`translate(${width * 0.82}, ${height * 0.88})`} opacity={0.08}>
           <Polygon points="0,12 6,0 40,0 34,12" fill="url(#solanaGrad)" />
           <Polygon points="0,20 6,12 40,12 34,20" fill="url(#solanaGrad)" />
           <Polygon points="0,28 6,20 40,20 34,28" fill="url(#solanaGrad)" />
         </G>
         
-        <G transform={`translate(${width * 0.85}, ${height * 0.85})`} opacity={0.1}>
-          <Polygon points="0,15 8,0 50,0 42,15" fill="url(#solanaGrad)" />
-          <Polygon points="0,25 8,15 50,15 42,25" fill="url(#solanaGrad)" />
-          <Polygon points="0,35 8,25 50,25 42,35" fill="url(#solanaGrad)" />
-        </G>
+        {/* === THE PATH === */}
         
-        {/* === THE PATH (where enemies walk) === */}
-        
-        {/* Path outer glow */}
+        {/* Outer glow */}
         <Path
           d={pathData}
           stroke="url(#pathGlow)"
-          strokeWidth={pathWidth + 30}
+          strokeWidth={pathWidth + 25}
           fill="none"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         
-        {/* Path border (colored edge) */}
+        {/* Border */}
         <Path
           d={pathData}
           stroke="url(#pathBorder)"
-          strokeWidth={pathWidth + 6}
+          strokeWidth={pathWidth + 5}
           fill="none"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         
-        {/* Path fill (dark road surface) */}
+        {/* Road surface */}
         <Path
           d={pathData}
           stroke="url(#pathFill)"
@@ -223,88 +195,19 @@ export const Lane: React.FC<LaneProps> = ({ width, height, timeMarkerProgress })
           strokeLinejoin="round"
         />
         
-        {/* Center dashed line (road marking) */}
+        {/* Center dashed line */}
         <Path
           d={pathData}
           stroke={COLORS.solanaGreen}
-          strokeWidth={2}
-          strokeDasharray="10 15"
-          strokeOpacity={0.5}
+          strokeWidth={1.5}
+          strokeDasharray="8 12"
+          strokeOpacity={0.45}
           fill="none"
           strokeLinecap="round"
         />
-        
-        {/* === TIME MARKER === */}
-        
-        {/* Marker vertical sweep line */}
-        <Path
-          d={`M ${timeMarkerPos.x} 0 L ${timeMarkerPos.x} ${height}`}
-          stroke={COLORS.solanaPink}
-          strokeWidth={1}
-          strokeOpacity={0.3}
-          strokeDasharray="4 4"
-        />
-        
-        {/* Marker glow */}
-        <Circle
-          cx={timeMarkerPos.x}
-          cy={timeMarkerPos.y}
-          r={50}
-          fill="url(#markerGlow)"
-        />
-        
-        {/* Marker crosshair lines */}
-        <Path
-          d={`M ${timeMarkerPos.x - 25} ${timeMarkerPos.y} L ${timeMarkerPos.x + 25} ${timeMarkerPos.y}`}
-          stroke={COLORS.solanaPink}
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeOpacity={0.8}
-        />
-        <Path
-          d={`M ${timeMarkerPos.x} ${timeMarkerPos.y - 25} L ${timeMarkerPos.x} ${timeMarkerPos.y + 25}`}
-          stroke={COLORS.solanaPink}
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeOpacity={0.8}
-        />
-        
-        {/* Marker center dot */}
-        <Circle
-          cx={timeMarkerPos.x}
-          cy={timeMarkerPos.y}
-          r={6}
-          fill={COLORS.solanaPink}
-          stroke={COLORS.text}
-          strokeWidth={2}
-        />
-        
-        {/* "LOCKED" indicator */}
-        {timeMarkerProgress > 0.1 && (
-          <G>
-            <Rect
-              x={timeMarkerPos.x - 45}
-              y={timeMarkerPos.y - 55}
-              width={40}
-              height={16}
-              rx={4}
-              fill="rgba(0,0,0,0.6)"
-            />
-            <SvgText
-              x={timeMarkerPos.x - 25}
-              y={timeMarkerPos.y - 43}
-              fill={COLORS.solanaPink}
-              fontSize={9}
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              LOCKED
-            </SvgText>
-          </G>
-        )}
       </Svg>
       
-      {/* Conference watermark */}
+      {/* Watermark */}
       <View style={styles.watermark}>
         <Text style={styles.watermarkText}>{BIOME.name.toUpperCase()}</Text>
       </View>
@@ -319,15 +222,15 @@ const styles = StyleSheet.create({
   },
   watermark: {
     position: 'absolute',
-    bottom: 8,
-    left: 12,
-    opacity: 0.12,
+    bottom: 6,
+    left: 8,
+    opacity: 0.1,
   },
   watermarkText: {
     color: COLORS.text,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
-    letterSpacing: 3,
+    letterSpacing: 2,
   },
 });
 
