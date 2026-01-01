@@ -19,25 +19,25 @@ interface LaneProps {
 // Generate smooth bezier curve through points
 function generateSmoothPath(points: { x: number; y: number }[]): string {
   if (points.length < 2) return '';
-  
+
   let d = `M ${points[0].x} ${points[0].y}`;
-  
+
   for (let i = 0; i < points.length - 1; i++) {
     const p0 = points[Math.max(0, i - 1)];
     const p1 = points[i];
     const p2 = points[i + 1];
     const p3 = points[Math.min(points.length - 1, i + 2)];
-    
+
     // Catmull-Rom to Bezier conversion
     const tension = 0.3;
     const cp1x = p1.x + (p2.x - p0.x) * tension;
     const cp1y = p1.y + (p2.y - p0.y) * tension;
     const cp2x = p2.x - (p3.x - p1.x) * tension;
     const cp2y = p2.y - (p3.y - p1.y) * tension;
-    
+
     d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
   }
-  
+
   return d;
 }
 
@@ -47,7 +47,7 @@ function getPathSamplePoints(
   numSamples: number
 ): { x: number; y: number }[] {
   const samples: { x: number; y: number }[] = [];
-  
+
   for (let i = 0; i < points.length - 1; i++) {
     const segmentSamples = Math.ceil(numSamples / (points.length - 1));
     for (let t = 0; t < segmentSamples; t++) {
@@ -58,50 +58,50 @@ function getPathSamplePoints(
       });
     }
   }
-  
+
   return samples;
 }
 
-export const Lane: React.FC<LaneProps> = ({ 
-  width, 
-  height, 
+export const Lane: React.FC<LaneProps> = ({
+  width,
+  height,
   freezeActive = false,
   showBuildZones = true,
   towers = [],
 }) => {
-  const points = useMemo(() => 
+  const points = useMemo(() =>
     PATH_WAYPOINTS.map(p => ({ x: p.x * width, y: p.y * height })),
     [width, height]
   );
-  
+
   const pathData = useMemo(() => generateSmoothPath(points), [points]);
-  
+
   // Build zone positions (CLEARLY OUTSIDE the path)
   const buildZones = useMemo(() => {
     const samples = getPathSamplePoints(points, 24);
     const zones: { x: number; y: number; available: boolean }[] = [];
     const offset = GAME_CONFIG.towerOffsetFromPath + 10; // Extra offset to be clearly outside
-    
+
     for (let i = 1; i < samples.length - 1; i += 2) {
       const prev = samples[i - 1];
       const curr = samples[i];
       const next = samples[i + 1];
-      
+
       // Get perpendicular direction
       const dx = next.x - prev.x;
       const dy = next.y - prev.y;
       const len = Math.sqrt(dx * dx + dy * dy) || 1;
       const nx = -dy / len;
       const ny = dx / len;
-      
+
       // Create zones on both sides of path
       const zone1 = { x: curr.x + nx * offset, y: curr.y + ny * offset };
       const zone2 = { x: curr.x - nx * offset, y: curr.y - ny * offset };
-      
+
       // Check if tower already exists nearby
-      const isTaken = (z: { x: number; y: number }) => 
+      const isTaken = (z: { x: number; y: number }) =>
         towers.some(t => Math.hypot(t.x - z.x, t.y - z.y) < GAME_CONFIG.minDistanceBetweenTowers);
-      
+
       if (zone1.x > 20 && zone1.x < width - 20 && zone1.y > 20 && zone1.y < height - 20) {
         zones.push({ ...zone1, available: !isTaken(zone1) });
       }
@@ -109,7 +109,7 @@ export const Lane: React.FC<LaneProps> = ({
         zones.push({ ...zone2, available: !isTaken(zone2) });
       }
     }
-    
+
     return zones;
   }, [points, towers, width, height]);
 

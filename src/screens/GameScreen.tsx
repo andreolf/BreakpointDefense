@@ -1,10 +1,11 @@
 /**
  * Game Screen
  * Click near path → popup → select tower → place
+ * Broadcasts snapshots when live
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { View, StyleSheet, Platform, Text } from 'react-native';
 import {
   createInitialState,
   updateGame,
@@ -24,9 +25,11 @@ import {
   setGameSpeed,
 } from '../game/engine';
 import { GameState } from '../game/types';
-import { COLORS, TowerType, GAME_WIDTH, GAME_HEIGHT } from '../game/config';
+import { COLORS, TowerType, GAME_WIDTH, GAME_HEIGHT, getTier } from '../game/config';
 import { useGameLoop } from '../hooks/useGameLoop';
 import { useHaptics } from '../hooks/useHaptics';
+import { liveClient } from '../live/wsClient';
+import { GameSnapshot } from '../live/types';
 
 import { Lane } from '../components/Lane';
 import { EnemyView } from '../components/EnemyView';
@@ -41,21 +44,92 @@ import { HealthOverlay } from '../components/HealthOverlay';
 import { SpeedControl } from '../components/SpeedControl';
 import { PauseButton } from '../components/PauseButton';
 
+interface LiveConfig {
+  alias: string;
+  goLive: boolean;
+}
+
 interface GameScreenProps {
   onGameOver: (state: GameState) => void;
   onQuit: () => void;
+  liveConfig?: LiveConfig;
 }
 
-export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) => {
+// Convert GameState to compact snapshot for streaming
+function createSnapshot(state: GameState): GameSnapshot {
+  return {
+    time: state.elapsedTime,
+    wave: state.wave,
+    baseHp: state.baseHp,
+    maxBaseHp: state.maxBaseHp,
+    kills: state.kills,
+    sol: state.sol,
+    gameSpeed: state.gameSpeed,
+    gameOver: state.gameOver,
+    enemies: state.enemies.map(e => ({
+      id: e.id,
+      type: e.type,
+      x: e.x,
+      y: e.y,
+      hp: e.hp,
+      maxHp: e.maxHp,
+    })),
+    towers: state.towers.map(t => ({
+      id: t.id,
+      type: t.type,
+      x: t.x,
+      y: t.y,
+      level: t.level,
+      rangeLevel: t.rangeLevel,
+    })),
+    finalTier: state.gameOver ? getTier(state.elapsedTime).name : undefined,
+  };
+}
+
+export const GameScreen: React.FC<GameScreenProps> = ({ 
+  onGameOver, 
+  onQuit,
+  liveConfig,
+}) => {
   const [gameState, setGameState] = useState<GameState>(createInitialState);
   const [selectedTowerId, setSelectedTowerId] = useState<string | null>(null);
   const [showPause, setShowPause] = useState(false);
+  
+  // Live streaming state
+  const [isLive, setIsLive] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const lastSnapshotTime = useRef(0);
+  const SNAPSHOT_INTERVAL = 300; // Send snapshot every 300ms
 
   // Popup state
   const [popupVisible, setPopupVisible] = useState(false);
   const [pendingPlacePosition, setPendingPlacePosition] = useState({ x: 0, y: 0 });
 
   const { triggerLight, triggerMedium } = useHaptics();
+
+  // Initialize live session if goLive is enabled
+  useEffect(() => {
+    if (liveConfig?.goLive && liveConfig.alias) {
+      const startLiveSession = async () => {
+        const id = await liveClient.createSession(liveConfig.alias);
+        if (id) {
+          setSessionId(id);
+          setIsLive(true);
+          console.log('[Live] Session started:', id);
+        } else {
+          console.log('[Live] Failed to start session');
+        }
+      };
+      startLiveSession();
+    }
+
+    return () => {
+      // End session when leaving game
+      if (isLive) {
+        liveClient.endSession();
+      }
+    };
+  }, []);
 
   // Keyboard controls (web only)
   useEffect(() => {
@@ -92,9 +166,28 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
     setGameState((prev) => {
       if (prev.gameOver) return prev;
       const next = updateGame(prev, delta);
+      
+      // Send snapshot if live
+      if (isLive) {
+        const now = Date.now();
+        if (now - lastSnapshotTime.current >= SNAPSHOT_INTERVAL) {
+          lastSnapshotTime.current = now;
+          liveClient.sendSnapshot(createSnapshot(next));
+        }
+      }
+      
+      // Handle game over
       if (next.gameOver && !prev.gameOver) {
+        // End live session with final snapshot
+        if (isLive) {
+          const finalSnapshot = createSnapshot(next);
+          finalSnapshot.finalTier = getTier(next.elapsedTime).name;
+          liveClient.endSession(finalSnapshot);
+          setIsLive(false);
+        }
         onGameOver(next);
       }
+      
       return next;
     });
   }, !gameState.isPaused && gameState.isRunning);
@@ -186,8 +279,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
 
   const handleQuit = useCallback(() => {
     setShowPause(false);
+    // End live session if active
+    if (isLive) {
+      liveClient.endSession(createSnapshot(gameState));
+      setIsLive(false);
+    }
     onQuit();
-  }, [onQuit]);
+  }, [onQuit, isLive, gameState]);
 
   // Speed control
   const handleSpeedChange = useCallback((speed: number) => {
@@ -237,12 +335,20 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
           ))}
         </ZoomPanContainer>
 
+        {/* Live Indicator */}
+        {isLive && (
+          <View style={styles.liveIndicator}>
+            <View style={styles.liveIndicatorDot} />
+            <Text style={styles.liveIndicatorText}>LIVE</Text>
+          </View>
+        )}
+
         {/* Health Overlay - Top center of game area */}
         <HealthOverlay hp={gameState.baseHp} maxHp={gameState.maxBaseHp} />
 
         {/* Speed Control - Top right */}
         <SpeedControl speed={gameState.gameSpeed} onChangeSpeed={handleSpeedChange} />
-        
+
         {/* Pause Button - Bottom right */}
         <PauseButton onPause={handlePause} />
       </View>
@@ -287,5 +393,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bgDark,
     overflow: 'hidden',
+  },
+  liveIndicator: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.hpLow,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 100,
+  },
+  liveIndicatorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFF',
+    marginRight: 8,
+  },
+  liveIndicatorText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });

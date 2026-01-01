@@ -1,0 +1,25 @@
+{
+  "name": "breakpoint-defense-server",
+  "version": "1.0.0",
+  "description": "Lightweight WebSocket server for live spectating",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/ws": "^8.5.10",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "typescript": "^5.3.0",
+    "ts-node": "^10.9.2"
+  }
+}
+
