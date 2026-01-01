@@ -19,7 +19,7 @@ export interface Enemy {
   speed: number;
   reward: number;
   damage: number;
-  pathProgress: number;  // 0-1 along the path
+  pathProgress: number;
   size: number;
 }
 
@@ -28,8 +28,9 @@ export interface Tower {
   type: TowerType;
   x: number;
   y: number;
-  pathProgress: number;  // Where along path (0-1)
-  level: number;         // 1-3
+  pathProgress: number;
+  level: number;           // 1-3 for damage/fire rate
+  rangeLevel: number;      // 1-3 for range (separate upgrade!)
   lastFireTime: number;
   targetId: string | null;
 }
@@ -48,7 +49,20 @@ export interface Projectile {
 }
 
 // =============================================================================
-// GAME STATE - Simplified without slots
+// SPECIAL ABILITIES
+// =============================================================================
+
+export interface Ability {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  cooldown: number;        // Seconds
+  lastUsedTime: number;    // -Infinity initially
+}
+
+// =============================================================================
+// GAME STATE
 // =============================================================================
 
 export interface GameState {
@@ -76,10 +90,17 @@ export interface GameState {
   baseHp: number;
   maxBaseHp: number;
   
-  // Entities - towers placed anywhere now
+  // Entities
   enemies: Enemy[];
   towers: Tower[];
   projectiles: Projectile[];
+  
+  // Abilities
+  abilities: {
+    bomb: { lastUsed: number };
+    freeze: { lastUsed: number; active: boolean; endTime: number };
+    airdrop: { lastUsed: number };
+  };
   
   // Stats
   kills: number;
@@ -88,7 +109,7 @@ export interface GameState {
 }
 
 // =============================================================================
-// RUN RESULT (for leaderboard)
+// RUN RESULT
 // =============================================================================
 
 export interface RunResult {

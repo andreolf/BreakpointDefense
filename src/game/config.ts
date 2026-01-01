@@ -1,6 +1,5 @@
 /**
  * Game Configuration
- * Central place for all game constants, colors, and configurations
  */
 
 import { Dimensions } from 'react-native';
@@ -8,71 +7,63 @@ import { Dimensions } from 'react-native';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // =============================================================================
-// LAYOUT - Now with sidebar
+// LAYOUT
 // =============================================================================
-export const SIDEBAR_WIDTH = 140;
-export const GAME_WIDTH = SCREEN_WIDTH - SIDEBAR_WIDTH;
-export const GAME_HEIGHT = SCREEN_HEIGHT * 0.85;
-export const HUD_HEIGHT = SCREEN_HEIGHT * 0.08;
+export const SIDEBAR_WIDTH = 130;
+export const LEFT_PANEL_WIDTH = 90;
+export const GAME_WIDTH = SCREEN_WIDTH - SIDEBAR_WIDTH - LEFT_PANEL_WIDTH;
+export const GAME_HEIGHT = SCREEN_HEIGHT * 0.92;
 
 // =============================================================================
-// SOLANA BRAND COLORS
+// COLORS
 // =============================================================================
 export const COLORS = {
-  // Primary Solana palette
   solanaGreen: '#14F195',
   solanaPurple: '#9945FF',
   solanaPink: '#DC1FFF',
   solanaBlue: '#00D1FF',
-  solanaTeal: '#19FB9B',
   
-  // Dark theme backgrounds
   bgDark: '#0D0D0D',
   bgDarker: '#050505',
   bgCard: '#1A1A2E',
   bgCardLight: '#252542',
   
-  // UI
   text: '#FFFFFF',
   textMuted: '#8B8B9A',
-  textAccent: '#14F195',
   
-  // Tower colors
   towerValidator: '#14F195',
   towerJupiter: '#FFA500',
   towerTensor: '#00D1FF',
   
-  // Enemy colors
   enemyFud: '#FF4444',
   enemyRugPull: '#8B0000',
   enemyCongestion: '#FFD700',
   
-  // Effects
-  projectile: '#14F195',
-  splash: 'rgba(20, 241, 149, 0.3)',
-  chain: '#00D1FF',
-  
-  // Health
   hpGood: '#14F195',
   hpMedium: '#FFD700',
   hpLow: '#FF4444',
+  
+  abilityBomb: '#FF6B6B',
+  abilityFreeze: '#00D1FF',
+  abilityAirdrop: '#14F195',
 };
 
 // =============================================================================
-// SOLANA ECOSYSTEM TOWERS - NOW WITH RANGE UPGRADES
+// TOWERS - Separate damage upgrades and range upgrades
 // =============================================================================
 export type TowerType = 'validator' | 'jupiter' | 'tensor';
 
 export interface TowerConfig {
   name: string;
-  shortName: string;
-  description: string;
   icon: string;
+  description: string;
   cost: number;
-  range: number[];         // Range per level (upgrades!)
-  damage: number[];        // Damage per level
-  fireRate: number[];      // Shots per second per level
-  upgradeCost: number[];   // Cost to upgrade to level 2, 3
+  baseRange: number;
+  rangeLevels: number[];      // Range per range level
+  damage: number[];           // Damage per power level
+  fireRate: number[];         // Fire rate per power level
+  upgradeCost: number[];      // Power upgrade costs
+  rangeUpgradeCost: number[]; // Range upgrade costs
   color: string;
   projectileColor: string;
   special?: 'chain' | 'splash';
@@ -85,44 +76,47 @@ export interface TowerConfig {
 export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
   validator: {
     name: 'Validator',
-    shortName: 'VAL',
-    description: 'Fast attacks',
     icon: '⚡',
+    description: 'Fast attacks',
     cost: 50,
-    range: [80, 95, 115],    // Range increases with level!
-    damage: [8, 12, 18],
+    baseRange: 70,
+    rangeLevels: [70, 90, 115],
+    damage: [8, 14, 22],
     fireRate: [4, 5, 6],
-    upgradeCost: [40, 80],
+    upgradeCost: [35, 70],
+    rangeUpgradeCost: [25, 50],
     color: COLORS.towerValidator,
     projectileColor: COLORS.solanaGreen,
   },
   jupiter: {
     name: 'Jupiter',
-    shortName: 'JUP',
-    description: 'Chains to 2',
     icon: '🪐',
+    description: 'Chain attack',
     cost: 80,
-    range: [75, 90, 110],    // Range increases with level!
-    damage: [15, 22, 32],
-    fireRate: [1.5, 1.8, 2.2],
-    upgradeCost: [60, 120],
+    baseRange: 65,
+    rangeLevels: [65, 85, 110],
+    damage: [15, 24, 36],
+    fireRate: [1.5, 2, 2.5],
+    upgradeCost: [50, 100],
+    rangeUpgradeCost: [35, 70],
     color: COLORS.towerJupiter,
-    projectileColor: COLORS.chain,
+    projectileColor: COLORS.solanaBlue,
     special: 'chain',
     chainCount: 2,
-    chainRadius: 65,
+    chainRadius: 60,
     chainDamageReduction: 0.5,
   },
   tensor: {
     name: 'Tensor',
-    shortName: 'TNS',
-    description: 'Splash area',
     icon: '💎',
+    description: 'Splash area',
     cost: 100,
-    range: [70, 85, 100],    // Range increases with level!
-    damage: [25, 40, 60],
-    fireRate: [0.8, 1.0, 1.2],
-    upgradeCost: [80, 150],
+    baseRange: 60,
+    rangeLevels: [60, 80, 100],
+    damage: [25, 42, 65],
+    fireRate: [0.8, 1.1, 1.4],
+    upgradeCost: [70, 130],
+    rangeUpgradeCost: [45, 90],
     color: COLORS.towerTensor,
     projectileColor: COLORS.solanaPink,
     special: 'splash',
@@ -131,14 +125,14 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
 };
 
 // =============================================================================
-// CRYPTO-THEMED ENEMIES
+// ENEMIES
 // =============================================================================
 export type EnemyType = 'fud' | 'rugpull' | 'congestion';
 
 export interface EnemyConfig {
   name: string;
-  description: string;
   icon: string;
+  description: string;
   hp: number;
   speed: number;
   reward: number;
@@ -151,107 +145,116 @@ export interface EnemyConfig {
 export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
   fud: {
     name: 'FUD',
-    description: 'Fast, weak',
     icon: '😱',
+    description: 'Fast & weak',
     hp: 25,
-    speed: 65,
+    speed: 60,
     reward: 10,
     damage: 5,
     color: COLORS.enemyFud,
-    size: 16,
+    size: 15,
     spawnWeight: 60,
   },
   rugpull: {
     name: 'Rug Pull',
-    description: 'Slow, tanky',
     icon: '🧹',
+    description: 'Slow & tanky',
     hp: 120,
-    speed: 26,
+    speed: 24,
     reward: 30,
     damage: 15,
     color: COLORS.enemyRugPull,
-    size: 22,
+    size: 20,
     spawnWeight: 25,
   },
   congestion: {
     name: 'Congestion',
-    description: 'Mini-boss',
     icon: '🚧',
+    description: 'Boss enemy',
     hp: 300,
-    speed: 38,
+    speed: 35,
     reward: 100,
     damage: 30,
     color: COLORS.enemyCongestion,
-    size: 30,
+    size: 28,
     spawnWeight: 0,
   },
 };
 
 // =============================================================================
-// TIER RANKS
+// SPECIAL ABILITIES
 // =============================================================================
-export interface TierConfig {
-  name: string;
-  icon: string;
-  minTime: number;
-  color: string;
-  description: string;
-}
+export const ABILITIES = {
+  bomb: {
+    name: 'Network Purge',
+    icon: '💥',
+    description: 'Destroy all enemies on screen',
+    cooldown: 45,  // seconds
+  },
+  freeze: {
+    name: 'Rate Limit',
+    icon: '❄️',
+    description: 'Slow all enemies for 5 seconds',
+    cooldown: 30,
+    duration: 5,
+    slowFactor: 0.3,
+  },
+  airdrop: {
+    name: 'SOL Airdrop',
+    icon: '🪂',
+    description: 'Gain 100 bonus SOL',
+    cooldown: 60,
+    bonus: 100,
+  },
+};
 
-export const TIERS: TierConfig[] = [
-  { name: 'Paper Hands', icon: '📄', minTime: 0, color: '#8B8B9A', description: 'Just getting started' },
-  { name: 'Diamond Hands', icon: '💎', minTime: 90, color: COLORS.solanaBlue, description: 'Holding strong' },
-  { name: 'Degen', icon: '🎰', minTime: 180, color: COLORS.solanaPurple, description: 'True believer' },
-  { name: 'Whale', icon: '🐋', minTime: 300, color: COLORS.solanaPink, description: 'Major player' },
-  { name: 'Satoshi', icon: '👑', minTime: 420, color: COLORS.solanaGreen, description: 'Legendary' },
+// =============================================================================
+// TIERS
+// =============================================================================
+export const TIERS = [
+  { name: 'Paper Hands', icon: '📄', minTime: 0, color: '#8B8B9A' },
+  { name: 'Diamond Hands', icon: '💎', minTime: 90, color: COLORS.solanaBlue },
+  { name: 'Degen', icon: '🎰', minTime: 180, color: COLORS.solanaPurple },
+  { name: 'Whale', icon: '🐋', minTime: 300, color: COLORS.solanaPink },
+  { name: 'Satoshi', icon: '👑', minTime: 420, color: COLORS.solanaGreen },
 ];
 
-export function getTier(survivalTime: number): TierConfig {
+export function getTier(survivalTime: number) {
   for (let i = TIERS.length - 1; i >= 0; i--) {
-    if (survivalTime >= TIERS[i].minTime) {
-      return TIERS[i];
-    }
+    if (survivalTime >= TIERS[i].minTime) return TIERS[i];
   }
   return TIERS[0];
 }
 
 // =============================================================================
-// GAME BALANCE
+// GAME CONFIG
 // =============================================================================
 export const GAME_CONFIG = {
-  // Starting values
   startingSOL: 150,
   startingBaseHP: 100,
   
-  // Spawning
-  baseSpawnInterval: 2200,
+  baseSpawnInterval: 2400,
   spawnIntervalDecay: 0.93,
-  minSpawnInterval: 500,
+  minSpawnInterval: 600,
   waveInterval: 15000,
   minibossInterval: 60000,
   
-  // Scaling
   hpScalePerWave: 1.08,
   speedScalePerWave: 1.02,
   
-  // Projectiles
-  projectileSpeed: 320,
+  projectileSpeed: 300,
   projectileSize: 5,
   
-  // Tower placement
-  slotRadius: 22,
-  towerOffsetFromPath: 45,       // How far from path center
-  minDistanceBetweenTowers: 60,  // Minimum spacing between towers
-  maxTowers: 20,                 // Maximum towers allowed
+  slotRadius: 20,
+  towerOffsetFromPath: 42,
+  minDistanceBetweenTowers: 55,
+  maxTowers: 20,
+  pathClickRadius: 55,
   
-  // Path click detection
-  pathClickRadius: 50,           // How close to path to detect clicks
-  
-  // Max tower level
   maxTowerLevel: 3,
+  maxRangeLevel: 3,
   
-  // Path width
-  pathWidth: 28,
+  pathWidth: 26,
 };
 
 // =============================================================================
@@ -259,48 +262,34 @@ export const GAME_CONFIG = {
 // =============================================================================
 export const BIOME = {
   name: 'Solana Breakpoint',
-  tagline: 'Defend the Network',
-  description: 'The biggest Solana conference is under attack!',
-  spawnRateMultiplier: 1.2,
+  spawnRateMultiplier: 1.15,
   enemySpeedMultiplier: 1.1,
 };
 
 // =============================================================================
-// SNAKE-LIKE PATH - Multiple turns for good tower coverage
+// PATH
 // =============================================================================
-export interface PathPoint {
-  x: number;
-  y: number;
-}
-
-// Snake path with multiple curves
-export const PATH_WAYPOINTS: PathPoint[] = [
-  { x: -0.05, y: 0.15 },
-  { x: 0.08, y: 0.15 },
-  { x: 0.18, y: 0.12 },
-  { x: 0.28, y: 0.22 },
-  { x: 0.35, y: 0.40 },
-  { x: 0.28, y: 0.55 },
-  { x: 0.16, y: 0.60 },
-  { x: 0.10, y: 0.72 },
-  { x: 0.18, y: 0.85 },
-  { x: 0.35, y: 0.90 },
-  { x: 0.52, y: 0.82 },
-  { x: 0.62, y: 0.65 },
-  { x: 0.68, y: 0.48 },
-  { x: 0.75, y: 0.32 },
+export const PATH_WAYPOINTS = [
+  { x: -0.05, y: 0.18 },
+  { x: 0.10, y: 0.18 },
+  { x: 0.22, y: 0.12 },
+  { x: 0.32, y: 0.28 },
+  { x: 0.28, y: 0.48 },
+  { x: 0.18, y: 0.58 },
+  { x: 0.12, y: 0.72 },
+  { x: 0.22, y: 0.85 },
+  { x: 0.42, y: 0.88 },
+  { x: 0.58, y: 0.78 },
+  { x: 0.68, y: 0.58 },
+  { x: 0.75, y: 0.38 },
   { x: 0.85, y: 0.28 },
-  { x: 0.94, y: 0.40 },
-  { x: 1.00, y: 0.50 },
-  { x: 1.08, y: 0.50 },
+  { x: 0.95, y: 0.42 },
+  { x: 1.00, y: 0.52 },
+  { x: 1.08, y: 0.52 },
 ];
 
-// Convert percentage points to actual coordinates
-export function getPathPoints(width: number, height: number): { x: number; y: number }[] {
-  return PATH_WAYPOINTS.map(p => ({
-    x: p.x * width,
-    y: p.y * height,
-  }));
+export function getPathPoints(width: number, height: number) {
+  return PATH_WAYPOINTS.map(p => ({ x: p.x * width, y: p.y * height }));
 }
 
 // =============================================================================
@@ -308,8 +297,4 @@ export function getPathPoints(width: number, height: number): { x: number; y: nu
 // =============================================================================
 export const ECOSYSTEM_ICONS = {
   sol: '◎',
-  phantom: '👻',
-  jupiter: '🪐',
-  tensor: '💎',
-  jito: '⚡',
 };

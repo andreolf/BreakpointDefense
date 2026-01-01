@@ -1,237 +1,152 @@
 /**
  * Lane Component
- * Renders the snake-like S-curve path - enemies walk ON this
+ * Renders the S-curve path with Solana theming
  */
 
 import React, { useMemo } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
-import Svg, {
-  Path,
-  Defs,
-  LinearGradient,
-  Stop,
-  RadialGradient,
-  Circle,
-  Rect,
-  G,
-  Polygon,
-} from 'react-native-svg';
-import { COLORS, getPathPoints, BIOME, GAME_CONFIG } from '../game/config';
+import { View, StyleSheet } from 'react-native';
+import Svg, { Path, Defs, LinearGradient, Stop, Circle, G, Rect } from 'react-native-svg';
+import { PATH_WAYPOINTS, COLORS, GAME_CONFIG } from '../game/config';
 
 interface LaneProps {
   width: number;
   height: number;
-  timeMarkerProgress: number;
+  freezeActive?: boolean;
 }
 
-export const Lane: React.FC<LaneProps> = ({ width, height, timeMarkerProgress }) => {
-  // Generate smooth path from waypoints
-  const pathPoints = useMemo(() => getPathPoints(width, height), [width, height]);
-  
-  // Create SVG path string with bezier curves for smooth curves
+export const Lane: React.FC<LaneProps> = ({ width, height, freezeActive = false }) => {
   const pathData = useMemo(() => {
-    if (pathPoints.length < 2) return '';
+    const points = PATH_WAYPOINTS.map(p => ({ x: p.x * width, y: p.y * height }));
     
-    let d = `M ${pathPoints[0].x} ${pathPoints[0].y}`;
+    if (points.length < 2) return '';
     
-    for (let i = 1; i < pathPoints.length; i++) {
-      const prev = pathPoints[i - 1];
-      const curr = pathPoints[i];
+    let d = `M ${points[0].x} ${points[0].y}`;
+    
+    for (let i = 1; i < points.length - 1; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const next = points[i + 1];
       
-      // Control points for smooth bezier
       const cp1x = prev.x + (curr.x - prev.x) * 0.5;
-      const cp1y = prev.y;
-      const cp2x = prev.x + (curr.x - prev.x) * 0.5;
-      const cp2y = curr.y;
+      const cp1y = prev.y + (curr.y - prev.y) * 0.5;
+      const cp2x = curr.x - (next.x - prev.x) * 0.2;
+      const cp2y = curr.y - (next.y - prev.y) * 0.2;
       
-      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${curr.x} ${curr.y}`;
+      d += ` Q ${cp1x} ${cp1y} ${curr.x} ${curr.y}`;
     }
+    
+    const last = points[points.length - 1];
+    d += ` L ${last.x} ${last.y}`;
     
     return d;
-  }, [pathPoints]);
-  
-  // Grid lines
-  const gridLines = useMemo(() => {
-    const lines = [];
-    const spacing = 45;
-    
-    for (let x = 0; x < width; x += spacing) {
-      lines.push({ x1: x, y1: 0, x2: x, y2: height, key: `v${x}` });
-    }
-    for (let y = 0; y < height; y += spacing) {
-      lines.push({ x1: 0, y1: y, x2: width, y2: y, key: `h${y}` });
-    }
-    
-    return lines;
-  }, [width, height]);
-  
-  // Particles
-  const particles = useMemo(() => {
-    const list = [];
-    const count = 25;
-    for (let i = 0; i < count; i++) {
-      const seed = i * 5432.1;
-      list.push({
-        x: (Math.sin(seed) * 0.5 + 0.5) * width,
-        y: (Math.cos(seed * 1.3) * 0.5 + 0.5) * height,
-        size: 1 + (i % 2),
-        opacity: 0.15 + (i % 4) * 0.08,
-        key: `p${i}`,
-      });
-    }
-    return list;
   }, [width, height]);
 
-  const pathWidth = GAME_CONFIG.pathWidth;
+  // Decorative elements
+  const decorations = useMemo(() => {
+    const items = [];
+    const gridSize = 80;
+    
+    for (let x = 0; x < width; x += gridSize) {
+      for (let y = 0; y < height; y += gridSize) {
+        if (Math.random() > 0.7) {
+          items.push({
+            x: x + Math.random() * 40,
+            y: y + Math.random() * 40,
+            size: 2 + Math.random() * 3,
+            opacity: 0.1 + Math.random() * 0.2,
+          });
+        }
+      }
+    }
+    return items;
+  }, [width, height]);
 
   return (
     <View style={[styles.container, { width, height }]}>
-      <Svg width={width} height={height}>
+      <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
         <Defs>
-          {/* Background gradient */}
-          <LinearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#040406" />
-            <Stop offset="50%" stopColor="#08080E" />
-            <Stop offset="100%" stopColor="#060608" />
+          {/* Path gradient */}
+          <LinearGradient id="pathGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <Stop offset="0%" stopColor={COLORS.solanaPurple} stopOpacity="0.8" />
+            <Stop offset="50%" stopColor={COLORS.solanaPink} stopOpacity="0.6" />
+            <Stop offset="100%" stopColor={COLORS.solanaGreen} stopOpacity="0.8" />
           </LinearGradient>
           
-          {/* Path glow */}
-          <LinearGradient id="pathGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-            <Stop offset="0%" stopColor={COLORS.solanaPurple} stopOpacity="0.35" />
-            <Stop offset="50%" stopColor={COLORS.solanaPink} stopOpacity="0.25" />
-            <Stop offset="100%" stopColor={COLORS.solanaGreen} stopOpacity="0.35" />
-          </LinearGradient>
-          
-          {/* Path border */}
-          <LinearGradient id="pathBorder" x1="0%" y1="0%" x2="100%" y2="0%">
-            <Stop offset="0%" stopColor={COLORS.solanaPurple} />
-            <Stop offset="50%" stopColor={COLORS.solanaPink} />
-            <Stop offset="100%" stopColor={COLORS.solanaGreen} />
-          </LinearGradient>
-          
-          {/* Path surface */}
-          <LinearGradient id="pathFill" x1="0%" y1="0%" x2="100%" y2="0%">
-            <Stop offset="0%" stopColor="#100E18" />
-            <Stop offset="50%" stopColor="#0C0A12" />
-            <Stop offset="100%" stopColor="#081210" />
-          </LinearGradient>
-          
-          {/* Solana gradient */}
-          <LinearGradient id="solanaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor={COLORS.solanaGreen} />
-            <Stop offset="50%" stopColor={COLORS.solanaPurple} />
-            <Stop offset="100%" stopColor={COLORS.solanaPink} />
+          {/* Freeze overlay gradient */}
+          <LinearGradient id="freezeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <Stop offset="0%" stopColor={COLORS.solanaBlue} stopOpacity="0.4" />
+            <Stop offset="100%" stopColor={COLORS.solanaBlue} stopOpacity="0.6" />
           </LinearGradient>
         </Defs>
-        
-        {/* Background */}
-        <Rect x={0} y={0} width={width} height={height} fill="url(#bgGradient)" />
-        
-        {/* Grid */}
-        {gridLines.map(line => (
-          <Path
-            key={line.key}
-            d={`M ${line.x1} ${line.y1} L ${line.x2} ${line.y2}`}
-            stroke={COLORS.solanaPurple}
-            strokeWidth={0.5}
-            strokeOpacity={0.05}
-          />
-        ))}
-        
-        {/* Particles */}
-        {particles.map(p => (
-          <Circle
-            key={p.key}
-            cx={p.x}
-            cy={p.y}
-            r={p.size}
-            fill={COLORS.solanaGreen}
-            opacity={p.opacity}
-          />
-        ))}
-        
-        {/* Decorative Solana logos */}
-        <G transform={`translate(${width * 0.03}, ${height * 0.04})`} opacity={0.1}>
-          <Polygon points="0,10 5,0 32,0 27,10" fill="url(#solanaGrad)" />
-          <Polygon points="0,17 5,10 32,10 27,17" fill="url(#solanaGrad)" />
-          <Polygon points="0,24 5,17 32,17 27,24" fill="url(#solanaGrad)" />
+
+        {/* Background grid dots */}
+        <G opacity={0.3}>
+          {decorations.map((dec, i) => (
+            <Circle
+              key={i}
+              cx={dec.x}
+              cy={dec.y}
+              r={dec.size}
+              fill={COLORS.solanaPurple}
+              opacity={dec.opacity}
+            />
+          ))}
         </G>
-        
-        <G transform={`translate(${width * 0.82}, ${height * 0.88})`} opacity={0.08}>
-          <Polygon points="0,12 6,0 40,0 34,12" fill="url(#solanaGrad)" />
-          <Polygon points="0,20 6,12 40,12 34,20" fill="url(#solanaGrad)" />
-          <Polygon points="0,28 6,20 40,20 34,28" fill="url(#solanaGrad)" />
-        </G>
-        
-        {/* === THE PATH === */}
-        
-        {/* Outer glow */}
+
+        {/* Main path - outer glow */}
         <Path
           d={pathData}
-          stroke="url(#pathGlow)"
-          strokeWidth={pathWidth + 25}
+          stroke={freezeActive ? COLORS.solanaBlue : COLORS.solanaPurple}
+          strokeWidth={GAME_CONFIG.pathWidth + 12}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={0.15}
+        />
+
+        {/* Main path - body */}
+        <Path
+          d={pathData}
+          stroke="url(#pathGrad)"
+          strokeWidth={GAME_CONFIG.pathWidth}
           fill="none"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        
-        {/* Border */}
+
+        {/* Path center line */}
         <Path
           d={pathData}
-          stroke="url(#pathBorder)"
-          strokeWidth={pathWidth + 5}
+          stroke={COLORS.bgDark}
+          strokeWidth={2}
           fill="none"
           strokeLinecap="round"
           strokeLinejoin="round"
-        />
-        
-        {/* Road surface */}
-        <Path
-          d={pathData}
-          stroke="url(#pathFill)"
-          strokeWidth={pathWidth}
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        
-        {/* Center dashed line */}
-        <Path
-          d={pathData}
-          stroke={COLORS.solanaGreen}
-          strokeWidth={1.5}
           strokeDasharray="8 12"
-          strokeOpacity={0.45}
-          fill="none"
-          strokeLinecap="round"
+          opacity={0.5}
         />
+
+        {/* Freeze overlay */}
+        {freezeActive && (
+          <Path
+            d={pathData}
+            stroke="url(#freezeGrad)"
+            strokeWidth={GAME_CONFIG.pathWidth + 6}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
       </Svg>
-      
-      {/* Watermark */}
-      <View style={styles.watermark}>
-        <Text style={styles.watermarkText}>{BIOME.name.toUpperCase()}</Text>
-      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  watermark: {
     position: 'absolute',
-    bottom: 6,
-    left: 8,
-    opacity: 0.1,
-  },
-  watermarkText: {
-    color: COLORS.text,
-    fontSize: 9,
-    fontWeight: 'bold',
-    letterSpacing: 2,
+    top: 0,
+    left: 0,
+    backgroundColor: COLORS.bgDark,
   },
 });
-
-export default Lane;
