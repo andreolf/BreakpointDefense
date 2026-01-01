@@ -1,10 +1,10 @@
 /**
  * Game Screen
- * Main gameplay with drag-to-place towers
+ * Main gameplay with tap-to-place towers, zoom & pan
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Platform, Pressable } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   createInitialState,
@@ -21,7 +21,7 @@ import {
   canUseAirdrop,
   useAirdrop,
 } from '../game/engine';
-import { GameState, Tower } from '../game/types';
+import { GameState } from '../game/types';
 import { COLORS, TowerType, GAME_WIDTH, GAME_HEIGHT } from '../game/config';
 import { useGameLoop } from '../hooks/useGameLoop';
 import { useHaptics } from '../hooks/useHaptics';
@@ -34,6 +34,7 @@ import { TowerView } from '../components/TowerView';
 import { LeftPanel } from '../components/LeftPanel';
 import { RightPanel } from '../components/RightPanel';
 import { PauseModal } from '../components/PauseModal';
+import { ZoomPanContainer } from '../components/ZoomPanContainer';
 
 interface GameScreenProps {
   onGameOver: (state: GameState) => void;
@@ -66,7 +67,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
       const next = placeTower(prev, x, y, type);
       if (next !== prev) {
         triggerMedium();
-        // Auto-select the newly placed tower
         const newTower = next.towers[next.towers.length - 1];
         setSelectedTowerId(newTower?.id || null);
         setSelectedTowerType(null);
@@ -75,14 +75,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
     });
   }, [triggerMedium]);
 
-  // Handle click/tap on game world to place selected tower type
-  const handleGameWorldPress = useCallback((event: any) => {
+  // Handle click on map to place selected tower type
+  const handleMapClick = useCallback((x: number, y: number) => {
     if (!selectedTowerType) return;
     
-    const { locationX, locationY } = event.nativeEvent;
-    
     setGameState((prev) => {
-      const next = placeTower(prev, locationX, locationY, selectedTowerType);
+      const next = placeTower(prev, x, y, selectedTowerType);
       if (next !== prev) {
         triggerMedium();
         const newTower = next.towers[next.towers.length - 1];
@@ -101,6 +99,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
   // Handle tower selection
   const handleTowerPress = useCallback((towerId: string) => {
     setSelectedTowerId((prev) => (prev === towerId ? null : towerId));
+    setSelectedTowerType(null);
     triggerLight();
   }, [triggerLight]);
 
@@ -179,33 +178,39 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
         onAirdrop={handleAirdrop}
       />
 
-      {/* Game World */}
-      <Pressable style={styles.gameWorld} onPress={handleGameWorldPress}>
-        <Lane width={GAME_WIDTH} height={GAME_HEIGHT} freezeActive={gameState.abilities.freeze.active} />
-        
-        {/* Base */}
-        <BaseView hp={gameState.baseHp} maxHp={gameState.maxBaseHp} />
+      {/* Game World with Zoom & Pan */}
+      <View style={styles.gameWorldContainer}>
+        <ZoomPanContainer
+          width={GAME_WIDTH}
+          height={GAME_HEIGHT}
+          onMapClick={handleMapClick}
+        >
+          <Lane width={GAME_WIDTH} height={GAME_HEIGHT} freezeActive={gameState.abilities.freeze.active} />
+          
+          {/* Base */}
+          <BaseView hp={gameState.baseHp} maxHp={gameState.maxBaseHp} />
 
-        {/* Towers */}
-        {gameState.towers.map((tower) => (
-          <TowerView
-            key={tower.id}
-            tower={tower}
-            isSelected={tower.id === selectedTowerId}
-            onPress={() => handleTowerPress(tower.id)}
-          />
-        ))}
+          {/* Towers */}
+          {gameState.towers.map((tower) => (
+            <TowerView
+              key={tower.id}
+              tower={tower}
+              isSelected={tower.id === selectedTowerId}
+              onPress={() => handleTowerPress(tower.id)}
+            />
+          ))}
 
-        {/* Enemies */}
-        {gameState.enemies.map((enemy) => (
-          <EnemyView key={enemy.id} enemy={enemy} />
-        ))}
+          {/* Enemies */}
+          {gameState.enemies.map((enemy) => (
+            <EnemyView key={enemy.id} enemy={enemy} />
+          ))}
 
-        {/* Projectiles */}
-        {gameState.projectiles.map((proj) => (
-          <ProjectileView key={proj.id} projectile={proj} />
-        ))}
-      </Pressable>
+          {/* Projectiles */}
+          {gameState.projectiles.map((proj) => (
+            <ProjectileView key={proj.id} projectile={proj} />
+          ))}
+        </ZoomPanContainer>
+      </View>
 
       {/* Right Panel - Stats + Upgrades */}
       <RightPanel
@@ -232,7 +237,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: COLORS.bgDark,
   },
-  gameWorld: {
+  gameWorldContainer: {
     flex: 1,
     backgroundColor: COLORS.bgDark,
     overflow: 'hidden',
