@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Breakpoint Defense",
+    "slug": "breakpoint-defense",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0D0D0D"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.breakpoint.defense"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0D0D0D"
+      },
+      "package": "com.breakpoint.defense"
+    },
+    "plugins": [
+      "expo-av",
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}
