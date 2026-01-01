@@ -5,7 +5,7 @@
 
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import Svg, { Path, Circle, Defs, LinearGradient, Stop, G } from 'react-native-svg';
+import Svg, { Path, Circle, Defs, LinearGradient, Stop, G, Rect, Text as SvgText, Polygon } from 'react-native-svg';
 import { PATH_WAYPOINTS, COLORS, GAME_CONFIG } from '../game/config';
 
 interface LaneProps {
@@ -212,6 +212,85 @@ export const Lane: React.FC<LaneProps> = ({
             ))}
           </G>
         )}
+
+        {/* ENTRY GATE - Start of path */}
+        <G>
+          {/* Gate pillars */}
+          <Rect
+            x={points[0].x - 30}
+            y={points[0].y - 50}
+            width={12}
+            height={100}
+            fill={COLORS.solanaPurple}
+            rx={4}
+          />
+          <Rect
+            x={points[0].x + 18}
+            y={points[0].y - 50}
+            width={12}
+            height={100}
+            fill={COLORS.solanaPurple}
+            rx={4}
+          />
+          {/* Gate arch */}
+          <Rect
+            x={points[0].x - 30}
+            y={points[0].y - 55}
+            width={60}
+            height={16}
+            fill={COLORS.solanaPink}
+            rx={4}
+          />
+          {/* Entry label */}
+          <SvgText
+            x={points[0].x}
+            y={points[0].y - 65}
+            fill={COLORS.text}
+            fontSize={14}
+            fontWeight="bold"
+            textAnchor="middle"
+          >
+            ⚠️ SPAWN
+          </SvgText>
+          {/* Arrow indicating direction */}
+          <Polygon
+            points={`${points[0].x + 50},${points[0].y - 8} ${points[0].x + 50},${points[0].y + 8} ${points[0].x + 68},${points[0].y}`}
+            fill={COLORS.hpLow}
+          />
+        </G>
+
+        {/* EXIT / BASE - End of path */}
+        <G>
+          {/* Base platform */}
+          <Circle
+            cx={points[points.length - 1].x}
+            cy={points[points.length - 1].y}
+            r={50}
+            fill={COLORS.bgCard}
+            stroke={COLORS.solanaGreen}
+            strokeWidth={4}
+          />
+          <Circle
+            cx={points[points.length - 1].x}
+            cy={points[points.length - 1].y}
+            r={35}
+            fill={COLORS.bgDarker}
+            stroke={COLORS.solanaGreen}
+            strokeWidth={2}
+            strokeDasharray="6 4"
+          />
+          {/* Base label */}
+          <SvgText
+            x={points[points.length - 1].x}
+            y={points[points.length - 1].y - 60}
+            fill={COLORS.solanaGreen}
+            fontSize={14}
+            fontWeight="bold"
+            textAnchor="middle"
+          >
+            🏠 NETWORK
+          </SvgText>
+        </G>
       </Svg>
     </View>
   );

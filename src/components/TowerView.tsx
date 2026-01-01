@@ -127,7 +127,7 @@ export const TowerView: React.FC<TowerViewProps> = ({ tower, isSelected, onPress
               <Stop offset="100%" stopColor={config.color} stopOpacity={0.7} />
             </RadialGradient>
           </Defs>
-          
+
           {/* Base circle */}
           <Circle
             cx={size / 2}
@@ -137,16 +137,16 @@ export const TowerView: React.FC<TowerViewProps> = ({ tower, isSelected, onPress
             stroke={isSelected ? COLORS.text : '#000'}
             strokeWidth={isSelected ? 3 : 2}
           />
-          
+
           {/* Inner icon */}
           <TowerIcon type={tower.type} color={config.color} size={size} />
         </Svg>
-        
+
         {/* Level badge - Power */}
         <View style={[styles.levelBadge, { backgroundColor: COLORS.solanaPurple }]}>
           <Text style={styles.levelText}>{tower.level}</Text>
         </View>
-        
+
         {/* Range badge - only if upgraded */}
         {tower.rangeLevel > 1 && (
           <View style={[styles.rangeBadge, { backgroundColor: COLORS.solanaBlue }]}>

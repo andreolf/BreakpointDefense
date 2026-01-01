@@ -24,7 +24,6 @@ interface RightPanelProps {
   onBomb: () => void;
   onFreeze: () => void;
   onAirdrop: () => void;
-  onPause: () => void;
 }
 
 function formatTime(seconds: number): string {
@@ -43,7 +42,6 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onBomb,
   onFreeze,
   onAirdrop,
-  onPause,
 }) => {
   const tier = getTier(gameState.elapsedTime);
 
@@ -56,12 +54,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* ===== HEADER with PAUSE ===== */}
+        {/* ===== HEADER ===== */}
         <View style={styles.header}>
-          <Text style={styles.logoText}>🛡️ BREAKPOINT</Text>
-          <TouchableOpacity style={styles.pauseBtn} onPress={onPause}>
-            <Text style={styles.pauseIcon}>⏸</Text>
-          </TouchableOpacity>
+          <Text style={styles.logoText}>🛡️ BREAKPOINT DEFENSE</Text>
         </View>
 
         {/* ===== SOL BALANCE - BIG & TOP ===== */}
@@ -246,26 +241,17 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.bgCardLight,
   },
   logoText: {
     color: COLORS.solanaGreen,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-  },
-  pauseBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: COLORS.bgCard,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pauseIcon: {
-    fontSize: 16,
+    letterSpacing: 1,
   },
 
   // SOL Card - NOW AT TOP, BIG

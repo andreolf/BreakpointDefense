@@ -3,8 +3,8 @@
  * Click near path → popup → select tower → place
  */
 
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
 import {
   createInitialState,
   updateGame,
@@ -39,6 +39,7 @@ import { TowerPopup } from '../components/TowerPopup';
 import { ZoomPanContainer } from '../components/ZoomPanContainer';
 import { HealthOverlay } from '../components/HealthOverlay';
 import { SpeedControl } from '../components/SpeedControl';
+import { PauseButton } from '../components/PauseButton';
 
 interface GameScreenProps {
   onGameOver: (state: GameState) => void;
@@ -55,6 +56,36 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
   const [pendingPlacePosition, setPendingPlacePosition] = useState({ x: 0, y: 0 });
 
   const { triggerLight, triggerMedium } = useHaptics();
+
+  // Keyboard controls (web only)
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          if (showPause) {
+            handleResume();
+          } else {
+            handlePause();
+          }
+          break;
+        case 'Digit1':
+          handleSpeedChange(1);
+          break;
+        case 'Digit2':
+          handleSpeedChange(2);
+          break;
+        case 'Digit3':
+          handleSpeedChange(3);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPause]);
 
   // Game loop
   useGameLoop((delta) => {
@@ -208,9 +239,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
 
         {/* Health Overlay - Top center of game area */}
         <HealthOverlay hp={gameState.baseHp} maxHp={gameState.maxBaseHp} />
-        
+
         {/* Speed Control - Top right */}
         <SpeedControl speed={gameState.gameSpeed} onChangeSpeed={handleSpeedChange} />
+        
+        {/* Pause Button - Bottom right */}
+        <PauseButton onPause={handlePause} />
       </View>
 
       {/* Right Panel - Stats + Upgrades + Abilities */}
@@ -224,7 +258,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
         onBomb={handleBomb}
         onFreeze={handleFreeze}
         onAirdrop={handleAirdrop}
-        onPause={handlePause}
       />
 
       {/* Tower Selection Popup */}

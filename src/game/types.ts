@@ -71,38 +71,38 @@ export interface GameState {
   isPaused: boolean;
   gameOver: boolean;
   gameSpeed: number;  // 1, 2, or 3
-  
+
   // Time tracking
   startTime: number;
   elapsedTime: number;
   lastUpdateTime: number;
-  
+
   // Wave management
   wave: number;
   spawnTimer: number;
   lastWaveTime: number;
   lastMinibossTime: number;
   spawnInterval: number;
-  
+
   // Resources
   sol: number;
-  
+
   // Base
   baseHp: number;
   maxBaseHp: number;
-  
+
   // Entities
   enemies: Enemy[];
   towers: Tower[];
   projectiles: Projectile[];
-  
+
   // Abilities
   abilities: {
     bomb: { lastUsed: number };
     freeze: { lastUsed: number; active: boolean; endTime: number };
     airdrop: { lastUsed: number };
   };
-  
+
   // Stats
   kills: number;
   damageDealt: number;

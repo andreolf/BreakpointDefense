@@ -35,13 +35,13 @@ export const HealthOverlay: React.FC<HealthOverlayProps> = ({ hp, maxHp }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 20,
-    left: '50%',
-    transform: [{ translateX: -140 }],
-    zIndex: 100,
-  },
+    container: {
+        position: 'absolute',
+        top: 20,
+        left: '50%',
+        transform: [{ translateX: -140 }],
+        zIndex: 100,
+    },
     card: {
         flexDirection: 'row',
         alignItems: 'center',

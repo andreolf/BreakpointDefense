@@ -423,7 +423,7 @@ export function updateGame(state: GameState, deltaMs: number): GameState {
     // Calculate movement based on speed and time
     const speedPerMs = (enemy.speed * freezeSlow) / 1000;
     const distanceMoved = speedPerMs * adjustedDelta;
-    
+
     // Convert distance to path progress (approximately 50 units per segment)
     const progressDelta = distanceMoved / 50;
     const newProgress = enemy.pathProgress + progressDelta;

@@ -21,23 +21,23 @@ export const COLORS = {
   solanaPurple: '#9945FF',
   solanaPink: '#DC1FFF',
   solanaBlue: '#00D1FF',
-  
+
   bgDark: '#0D0D0D',
   bgDarker: '#050505',
   bgCard: '#1A1A2E',
   bgCardLight: '#252542',
-  
+
   text: '#FFFFFF',
   textMuted: '#8B8B9A',
-  
+
   towerValidator: '#14F195',
   towerJupiter: '#FFA500',
   towerTensor: '#00D1FF',
-  
+
   enemyFud: '#FF4444',
   enemyRugPull: '#8B0000',
   enemyCongestion: '#FFD700',
-  
+
   hpGood: '#14F195',
   hpMedium: '#FFD700',
   hpLow: '#FF4444',
@@ -223,30 +223,30 @@ export function getTier(survivalTime: number) {
 export const GAME_CONFIG = {
   startingSOL: 150,
   startingBaseHP: 100,
-  
+
   baseSpawnInterval: 2400,
   spawnIntervalDecay: 0.93,
   minSpawnInterval: 600,
   waveInterval: 15000,
   minibossInterval: 60000,
-  
+
   hpScalePerWave: 1.08,
   speedScalePerWave: 1.02,
-  
+
   projectileSpeed: 300,
   projectileSize: 5,
-  
-  // Tower placement - MUST be outside path
-  towerOffsetFromPath: 70,      // Minimum distance from path center (increased)
-  minDistanceBetweenTowers: 65,
+
+  // Tower placement - closer to path for visibility
+  towerOffsetFromPath: 55,      // Distance from path center
+  minDistanceBetweenTowers: 55,
   maxTowers: 20,
-  pathClickRadius: 100,         // How far from path you can click
-  
+  pathClickRadius: 80,          // How far from path you can click
+
   maxTowerLevel: 3,
   maxRangeLevel: 3,
-  
-  // Path is BIGGER now
-  pathWidth: 38,
+
+  // Path width - wide enough for enemies
+  pathWidth: 48,
 };
 
 // =============================================================================
