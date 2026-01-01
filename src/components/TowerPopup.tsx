@@ -22,7 +22,7 @@ interface TowerPopupProps {
 const TowerIcon = ({ type, size, color }: { type: TowerType; size: number; color: string }) => {
   const center = size / 2;
   const r = size * 0.35;
-  
+
   switch (type) {
     case 'validator':
       return (
@@ -107,7 +107,7 @@ export const TowerPopup: React.FC<TowerPopupProps> = ({
               const config = TOWER_CONFIGS[type];
               const canAfford = sol >= config.cost;
               const canBuild = canAfford && !maxTowers;
-              
+
               // Determine why it's disabled
               let disabledReason = '';
               if (maxTowers) {
@@ -133,7 +133,7 @@ export const TowerPopup: React.FC<TowerPopupProps> = ({
                     {config.name}
                   </Text>
                   <Text style={styles.towerDesc}>{config.description}</Text>
-                  
+
                   {/* Stats */}
                   <View style={styles.statsRow}>
                     <Text style={styles.stat}>⚔️{config.damage[0]}</Text>

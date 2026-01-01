@@ -70,6 +70,7 @@ export interface GameState {
   isRunning: boolean;
   isPaused: boolean;
   gameOver: boolean;
+  gameSpeed: number;  // 1, 2, or 3
   
   // Time tracking
   startTime: number;

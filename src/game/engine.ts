@@ -38,12 +38,12 @@ function lerp(a: number, b: number, t: number): number {
 function getPositionOnPath(progress: number): { x: number; y: number } {
   if (progress <= 0) return { ...PATH_POINTS[0] };
   if (progress >= PATH_POINTS.length - 1) return { ...PATH_POINTS[PATH_POINTS.length - 1] };
-  
+
   const idx = Math.floor(progress);
   const t = progress - idx;
-  
+
   if (idx >= PATH_POINTS.length - 1) return { ...PATH_POINTS[PATH_POINTS.length - 1] };
-  
+
   return {
     x: lerp(PATH_POINTS[idx].x, PATH_POINTS[idx + 1].x, t),
     y: lerp(PATH_POINTS[idx].y, PATH_POINTS[idx + 1].y, t),
@@ -53,7 +53,7 @@ function getPositionOnPath(progress: number): { x: number; y: number } {
 function findClosestPathProgress(x: number, y: number): number {
   let closestProgress = 0;
   let closestDist = Infinity;
-  
+
   for (let i = 0; i < PATH_POINTS.length - 1; i++) {
     for (let t = 0; t <= 1; t += 0.05) {
       const px = lerp(PATH_POINTS[i].x, PATH_POINTS[i + 1].x, t);
@@ -70,7 +70,7 @@ function findClosestPathProgress(x: number, y: number): number {
 
 function getDistanceToPath(x: number, y: number): number {
   let closestDist = Infinity;
-  
+
   for (let i = 0; i < PATH_POINTS.length - 1; i++) {
     for (let t = 0; t <= 1; t += 0.05) {
       const px = lerp(PATH_POINTS[i].x, PATH_POINTS[i + 1].x, t);
@@ -100,31 +100,32 @@ export function createInitialState(): GameState {
     isRunning: true,
     isPaused: false,
     gameOver: false,
-    
+    gameSpeed: 1,
+
     startTime: now,
     elapsedTime: 0,
     lastUpdateTime: now,
-    
+
     wave: 1,
     spawnTimer: 0,
     lastWaveTime: now,
     lastMinibossTime: now,
     spawnInterval: GAME_CONFIG.baseSpawnInterval / BIOME.spawnRateMultiplier,
-    
+
     sol: GAME_CONFIG.startingSOL,
     baseHp: GAME_CONFIG.startingBaseHP,
     maxBaseHp: GAME_CONFIG.startingBaseHP,
-    
+
     enemies: [],
     towers: [],
     projectiles: [],
-    
+
     abilities: {
       bomb: { lastUsed: -Infinity },
       freeze: { lastUsed: -Infinity, active: false, endTime: 0 },
       airdrop: { lastUsed: -Infinity },
     },
-    
+
     kills: 0,
     damageDealt: 0,
     solEarned: 0,
@@ -143,22 +144,22 @@ export function canPlaceTower(
 ): boolean {
   // Check sol
   if (state.sol < TOWER_CONFIGS[towerType].cost) return false;
-  
+
   // Check max towers
   if (state.towers.length >= GAME_CONFIG.maxTowers) return false;
-  
+
   // Check proximity to path
   const progress = findClosestPathProgress(x, y);
   const pathPos = getPositionOnPath(progress);
   const distToPath = distance(x, y, pathPos.x, pathPos.y);
   if (distToPath > GAME_CONFIG.pathClickRadius) return false;
-  
+
   // Check distance from other towers
   for (const tower of state.towers) {
     const d = distance(x, y, tower.x, tower.y);
     if (d < GAME_CONFIG.minDistanceBetweenTowers) return false;
   }
-  
+
   return true;
 }
 
@@ -169,16 +170,16 @@ export function placeTower(
   towerType: TowerType
 ): GameState {
   if (!canPlaceTower(state, x, y, towerType)) return state;
-  
+
   const config = TOWER_CONFIGS[towerType];
   const progress = findClosestPathProgress(x, y);
   const pathPos = getPositionOnPath(progress);
-  
+
   // Place tower offset from path
   const dx = x - pathPos.x;
   const dy = y - pathPos.y;
   const len = Math.sqrt(dx * dx + dy * dy) || 1;
-  
+
   const tower: Tower = {
     id: uid(),
     type: towerType,
@@ -190,7 +191,7 @@ export function placeTower(
     lastFireTime: 0,
     targetId: null,
   };
-  
+
   return {
     ...state,
     towers: [...state.towers, tower],
@@ -205,17 +206,17 @@ export function placeTower(
 export function canUpgradeTowerLevel(state: GameState, towerId: string): boolean {
   const tower = state.towers.find(t => t.id === towerId);
   if (!tower || tower.level >= GAME_CONFIG.maxTowerLevel) return false;
-  
+
   const cost = TOWER_CONFIGS[tower.type].upgradeCost[tower.level - 1];
   return state.sol >= cost;
 }
 
 export function upgradeTowerLevel(state: GameState, towerId: string): GameState {
   if (!canUpgradeTowerLevel(state, towerId)) return state;
-  
+
   const tower = state.towers.find(t => t.id === towerId)!;
   const cost = TOWER_CONFIGS[tower.type].upgradeCost[tower.level - 1];
-  
+
   return {
     ...state,
     towers: state.towers.map(t =>
@@ -228,17 +229,17 @@ export function upgradeTowerLevel(state: GameState, towerId: string): GameState 
 export function canUpgradeTowerRange(state: GameState, towerId: string): boolean {
   const tower = state.towers.find(t => t.id === towerId);
   if (!tower || tower.rangeLevel >= GAME_CONFIG.maxRangeLevel) return false;
-  
+
   const cost = TOWER_CONFIGS[tower.type].rangeUpgradeCost[tower.rangeLevel - 1];
   return state.sol >= cost;
 }
 
 export function upgradeTowerRange(state: GameState, towerId: string): GameState {
   if (!canUpgradeTowerRange(state, towerId)) return state;
-  
+
   const tower = state.towers.find(t => t.id === towerId)!;
   const cost = TOWER_CONFIGS[tower.type].rangeUpgradeCost[tower.rangeLevel - 1];
-  
+
   return {
     ...state,
     towers: state.towers.map(t =>
@@ -259,10 +260,10 @@ export function canUseBomb(state: GameState): boolean {
 
 export function useBomb(state: GameState): GameState {
   if (!canUseBomb(state)) return state;
-  
+
   const solGained = state.enemies.reduce((sum, e) => sum + e.reward, 0);
   const kills = state.enemies.length;
-  
+
   return {
     ...state,
     enemies: [],
@@ -283,7 +284,7 @@ export function canUseFreeze(state: GameState): boolean {
 
 export function useFreeze(state: GameState): GameState {
   if (!canUseFreeze(state)) return state;
-  
+
   return {
     ...state,
     abilities: {
@@ -304,7 +305,7 @@ export function canUseAirdrop(state: GameState): boolean {
 
 export function useAirdrop(state: GameState): GameState {
   if (!canUseAirdrop(state)) return state;
-  
+
   return {
     ...state,
     sol: state.sol + ABILITIES.airdrop.bonus,
@@ -323,13 +324,13 @@ export function useAirdrop(state: GameState): GameState {
 function pickEnemyType(wave: number): EnemyType {
   const types: EnemyType[] = ['fud', 'rugpull'];
   const weights = types.map(t => ENEMY_CONFIGS[t].spawnWeight);
-  
+
   // Increase rugpull weight as waves progress
   weights[1] += wave * 3;
-  
+
   const total = weights.reduce((a, b) => a + b, 0);
   let roll = Math.random() * total;
-  
+
   for (let i = 0; i < types.length; i++) {
     roll -= weights[i];
     if (roll <= 0) return types[i];
@@ -340,10 +341,10 @@ function pickEnemyType(wave: number): EnemyType {
 function spawnEnemy(state: GameState, type: EnemyType): GameState {
   const config = ENEMY_CONFIGS[type];
   const pos = getPositionOnPath(0);
-  
+
   const hpScale = Math.pow(GAME_CONFIG.hpScalePerWave, state.wave - 1);
   const speedScale = Math.pow(GAME_CONFIG.speedScalePerWave, state.wave - 1);
-  
+
   const enemy: Enemy = {
     id: uid(),
     type,
@@ -357,7 +358,7 @@ function spawnEnemy(state: GameState, type: EnemyType): GameState {
     pathProgress: 0,
     size: config.size,
   };
-  
+
   return {
     ...state,
     enemies: [...state.enemies, enemy],
@@ -370,14 +371,18 @@ function spawnEnemy(state: GameState, type: EnemyType): GameState {
 
 export function updateGame(state: GameState, deltaMs: number): GameState {
   if (!state.isRunning || state.isPaused || state.gameOver) return state;
-  
+
+  // Apply game speed multiplier
+  const speedMultiplier = state.gameSpeed;
+  const adjustedDelta = deltaMs * speedMultiplier;
+
   const now = Date.now();
   let newState = { ...state };
-  
-  // Update elapsed time
+
+  // Update elapsed time (NOT affected by speed - real time tracking)
   newState.elapsedTime = (now - newState.startTime) / 1000;
   newState.lastUpdateTime = now;
-  
+
   // Check freeze end
   if (newState.abilities.freeze.active && now > newState.abilities.freeze.endTime) {
     newState.abilities = {
@@ -385,15 +390,15 @@ export function updateGame(state: GameState, deltaMs: number): GameState {
       freeze: { ...newState.abilities.freeze, active: false },
     };
   }
-  
+
   // Update spawn timer & spawn enemies
-  newState.spawnTimer += deltaMs;
+  newState.spawnTimer += adjustedDelta;
   if (newState.spawnTimer >= newState.spawnInterval) {
     newState.spawnTimer = 0;
     const type = pickEnemyType(newState.wave);
     newState = spawnEnemy(newState, type);
   }
-  
+
   // Wave progression
   if (now - newState.lastWaveTime >= GAME_CONFIG.waveInterval) {
     newState.wave++;
@@ -403,23 +408,27 @@ export function updateGame(state: GameState, deltaMs: number): GameState {
       newState.spawnInterval * GAME_CONFIG.spawnIntervalDecay
     );
   }
-  
+
   // Miniboss spawn
   if (now - newState.lastMinibossTime >= GAME_CONFIG.minibossInterval) {
     newState.lastMinibossTime = now;
     newState = spawnEnemy(newState, 'congestion');
   }
-  
+
   // Move enemies
   const freezeActive = newState.abilities.freeze.active;
   const freezeSlow = freezeActive ? ABILITIES.freeze.slowFactor : 1;
-  
+
   newState.enemies = newState.enemies.map(enemy => {
-    const speed = (enemy.speed * freezeSlow * deltaMs) / 1000;
-    const progressPerSecond = speed / 50; // Approximate distance per progress unit
-    const newProgress = enemy.pathProgress + progressPerSecond;
-    const newPos = getPositionOnPath(newProgress);
+    // Calculate movement based on speed and time
+    const speedPerMs = (enemy.speed * freezeSlow) / 1000;
+    const distanceMoved = speedPerMs * adjustedDelta;
     
+    // Convert distance to path progress (approximately 50 units per segment)
+    const progressDelta = distanceMoved / 50;
+    const newProgress = enemy.pathProgress + progressDelta;
+    const newPos = getPositionOnPath(newProgress);
+
     return {
       ...enemy,
       x: newPos.x,
@@ -427,11 +436,11 @@ export function updateGame(state: GameState, deltaMs: number): GameState {
       pathProgress: newProgress,
     };
   });
-  
+
   // Check enemies reaching base
   const reachedBase: Enemy[] = [];
   const survivors: Enemy[] = [];
-  
+
   for (const enemy of newState.enemies) {
     if (enemy.pathProgress >= PATH_POINTS.length - 1.5) {
       reachedBase.push(enemy);
@@ -439,31 +448,31 @@ export function updateGame(state: GameState, deltaMs: number): GameState {
       survivors.push(enemy);
     }
   }
-  
+
   newState.enemies = survivors;
   const baseDamage = reachedBase.reduce((sum, e) => sum + e.damage, 0);
   newState.baseHp = Math.max(0, newState.baseHp - baseDamage);
-  
+
   // Game over check
   if (newState.baseHp <= 0) {
     newState.gameOver = true;
     newState.isRunning = false;
     return newState;
   }
-  
+
   // Tower targeting & shooting
   const newProjectiles: Projectile[] = [...newState.projectiles];
-  
+
   newState.towers = newState.towers.map(tower => {
     const config = TOWER_CONFIGS[tower.type];
     const range = config.rangeLevels[tower.rangeLevel - 1];
     const fireRate = config.fireRate[tower.level - 1];
     const damage = config.damage[tower.level - 1];
-    
+
     // Find target
     let target: Enemy | null = null;
     let minDist = range;
-    
+
     for (const enemy of newState.enemies) {
       const d = distance(tower.x, tower.y, enemy.x, enemy.y);
       if (d < minDist) {
@@ -471,15 +480,15 @@ export function updateGame(state: GameState, deltaMs: number): GameState {
         target = enemy;
       }
     }
-    
+
     if (!target) return { ...tower, targetId: null };
-    
+
     // Check fire rate
     const fireInterval = 1000 / fireRate;
     if (now - tower.lastFireTime < fireInterval) {
       return { ...tower, targetId: target.id };
     }
-    
+
     // Fire projectile
     newProjectiles.push({
       id: uid(),
@@ -493,50 +502,50 @@ export function updateGame(state: GameState, deltaMs: number): GameState {
       towerId: tower.id,
       towerType: tower.type,
     });
-    
+
     return { ...tower, targetId: target.id, lastFireTime: now };
   });
-  
+
   // Move projectiles
   const activeProjectiles: Projectile[] = [];
   const hitEnemyIds = new Set<string>();
   const damageMap = new Map<string, number>();
-  
+
   for (const proj of newProjectiles) {
     const target = newState.enemies.find(e => e.id === proj.targetId);
-    
+
     if (!target) {
       // Target dead, remove projectile
       continue;
     }
-    
+
     // Update target position
     proj.targetX = target.x;
     proj.targetY = target.y;
-    
+
     const dx = proj.targetX - proj.x;
     const dy = proj.targetY - proj.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    
+
     if (dist < 10) {
       // Hit!
       const config = TOWER_CONFIGS[proj.towerType];
-      
+
       // Apply damage to primary target
       damageMap.set(proj.targetId, (damageMap.get(proj.targetId) || 0) + proj.damage);
       hitEnemyIds.add(proj.targetId);
-      
+
       // Chain damage
       if (config.special === 'chain' && config.chainCount) {
         let chainCount = config.chainCount;
         let lastX = target.x;
         let lastY = target.y;
         const hitIds = new Set([proj.targetId]);
-        
+
         for (let i = 0; i < chainCount; i++) {
           let nearest: Enemy | null = null;
           let nearestDist = config.chainRadius || 60;
-          
+
           for (const enemy of newState.enemies) {
             if (hitIds.has(enemy.id)) continue;
             const d = distance(lastX, lastY, enemy.x, enemy.y);
@@ -545,7 +554,7 @@ export function updateGame(state: GameState, deltaMs: number): GameState {
               nearest = enemy;
             }
           }
-          
+
           if (nearest) {
             const chainDmg = proj.damage * (config.chainDamageReduction || 0.5);
             damageMap.set(nearest.id, (damageMap.get(nearest.id) || 0) + chainDmg);
@@ -558,7 +567,7 @@ export function updateGame(state: GameState, deltaMs: number): GameState {
           }
         }
       }
-      
+
       // Splash damage
       if (config.special === 'splash' && config.splashRadius) {
         for (const enemy of newState.enemies) {
@@ -573,20 +582,20 @@ export function updateGame(state: GameState, deltaMs: number): GameState {
       }
     } else {
       // Move projectile
-      const speed = (proj.speed * deltaMs) / 1000;
+      const speed = (proj.speed * adjustedDelta) / 1000;
       proj.x += (dx / dist) * speed;
       proj.y += (dy / dist) * speed;
       activeProjectiles.push(proj);
     }
   }
-  
+
   newState.projectiles = activeProjectiles;
-  
+
   // Apply damage
   let killCount = 0;
   let solGained = 0;
   let totalDamage = 0;
-  
+
   newState.enemies = newState.enemies.map(enemy => {
     const dmg = damageMap.get(enemy.id) || 0;
     totalDamage += dmg;
@@ -599,13 +608,27 @@ export function updateGame(state: GameState, deltaMs: number): GameState {
     }
     return true;
   });
-  
+
   newState.kills += killCount;
   newState.sol += solGained;
   newState.solEarned += solGained;
   newState.damageDealt += totalDamage;
-  
+
   return newState;
+}
+
+// =============================================================================
+// GAME SPEED
+// =============================================================================
+
+export function setGameSpeed(state: GameState, speed: number): GameState {
+  const validSpeed = Math.max(1, Math.min(3, speed));
+  return { ...state, gameSpeed: validSpeed };
+}
+
+export function cycleGameSpeed(state: GameState): GameState {
+  const nextSpeed = state.gameSpeed >= 3 ? 1 : state.gameSpeed + 1;
+  return { ...state, gameSpeed: nextSpeed };
 }
 
 // =============================================================================

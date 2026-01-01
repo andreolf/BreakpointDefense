@@ -21,6 +21,7 @@ import {
   useFreeze,
   canUseAirdrop,
   useAirdrop,
+  setGameSpeed,
 } from '../game/engine';
 import { GameState } from '../game/types';
 import { COLORS, TowerType, GAME_WIDTH, GAME_HEIGHT } from '../game/config';
@@ -37,6 +38,7 @@ import { PauseModal } from '../components/PauseModal';
 import { TowerPopup } from '../components/TowerPopup';
 import { ZoomPanContainer } from '../components/ZoomPanContainer';
 import { HealthOverlay } from '../components/HealthOverlay';
+import { SpeedControl } from '../components/SpeedControl';
 
 interface GameScreenProps {
   onGameOver: (state: GameState) => void;
@@ -47,11 +49,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
   const [gameState, setGameState] = useState<GameState>(createInitialState);
   const [selectedTowerId, setSelectedTowerId] = useState<string | null>(null);
   const [showPause, setShowPause] = useState(false);
-  
+
   // Popup state
   const [popupVisible, setPopupVisible] = useState(false);
   const [pendingPlacePosition, setPendingPlacePosition] = useState({ x: 0, y: 0 });
-  
+
   const { triggerLight, triggerMedium } = useHaptics();
 
   // Game loop
@@ -156,6 +158,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
     onQuit();
   }, [onQuit]);
 
+  // Speed control
+  const handleSpeedChange = useCallback((speed: number) => {
+    setGameState((prev) => setGameSpeed(prev, speed));
+  }, []);
+
   const selectedTower = gameState.towers.find((t) => t.id === selectedTowerId) || null;
 
   return (
@@ -167,14 +174,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
           height={GAME_HEIGHT}
           onMapClick={handleMapClick}
         >
-          <Lane 
-            width={GAME_WIDTH} 
-            height={GAME_HEIGHT} 
+          <Lane
+            width={GAME_WIDTH}
+            height={GAME_HEIGHT}
             freezeActive={gameState.abilities.freeze.active}
             showBuildZones={true}
             towers={gameState.towers.map(t => ({ x: t.x, y: t.y }))}
           />
-          
+
           {/* Base */}
           <BaseView hp={gameState.baseHp} maxHp={gameState.maxBaseHp} />
 
@@ -199,8 +206,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
           ))}
         </ZoomPanContainer>
 
-        {/* Health Overlay - Top Left of game area */}
+        {/* Health Overlay - Top center of game area */}
         <HealthOverlay hp={gameState.baseHp} maxHp={gameState.maxBaseHp} />
+        
+        {/* Speed Control - Top right */}
+        <SpeedControl speed={gameState.gameSpeed} onChangeSpeed={handleSpeedChange} />
       </View>
 
       {/* Right Panel - Stats + Upgrades + Abilities */}

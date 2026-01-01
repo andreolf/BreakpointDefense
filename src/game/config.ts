@@ -129,38 +129,46 @@ export interface EnemyConfig {
   color: string;
   size: number;
   spawnWeight: number;
+  face: string;        // Solana personality emoji/avatar
+  description: string; // Who they are
 }
 
 export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
   fud: {
-    name: 'FUD',
+    name: 'FUD Spreader',
     hp: 25,
     speed: 55,
     reward: 10,
     damage: 5,
     color: COLORS.enemyFud,
-    size: 16,
+    size: 18,
     spawnWeight: 60,
+    face: '😈',
+    description: 'Fast FUD attacks',
   },
   rugpull: {
-    name: 'Rug Pull',
+    name: 'Rug Puller',
     hp: 120,
     speed: 22,
     reward: 30,
     damage: 15,
     color: COLORS.enemyRugPull,
-    size: 22,
+    size: 24,
     spawnWeight: 25,
+    face: '🦹',
+    description: 'Slow but tanky',
   },
   congestion: {
-    name: 'Congestion',
+    name: 'Network Clog',
     hp: 300,
     speed: 32,
     reward: 100,
     damage: 30,
     color: COLORS.enemyCongestion,
-    size: 30,
+    size: 32,
     spawnWeight: 0,
+    face: '🤖',
+    description: 'Miniboss - huge HP',
   },
 };
 
@@ -229,10 +237,10 @@ export const GAME_CONFIG = {
   projectileSize: 5,
   
   // Tower placement - MUST be outside path
-  towerOffsetFromPath: 55,      // Minimum distance from path center
-  minDistanceBetweenTowers: 60,
+  towerOffsetFromPath: 70,      // Minimum distance from path center (increased)
+  minDistanceBetweenTowers: 65,
   maxTowers: 20,
-  pathClickRadius: 90,          // How far from path you can click
+  pathClickRadius: 100,         // How far from path you can click
   
   maxTowerLevel: 3,
   maxRangeLevel: 3,

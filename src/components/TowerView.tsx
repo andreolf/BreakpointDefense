@@ -1,11 +1,11 @@
 /**
  * Tower View
- * Renders a placed tower with range indicator
+ * Renders a placed tower with range indicator - MORE VISIBLE
  */
 
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, RadialGradient, Stop, G, Rect, Polygon } from 'react-native-svg';
 import { Tower } from '../game/types';
 import { TOWER_CONFIGS, COLORS } from '../game/config';
 
@@ -15,10 +15,56 @@ interface TowerViewProps {
   onPress: () => void;
 }
 
+// Tower icons as geometric shapes
+const TowerIcon: React.FC<{ type: string; color: string; size: number }> = ({ type, color, size }) => {
+  const center = size / 2;
+  const r = size * 0.32;
+
+  switch (type) {
+    case 'validator':
+      // Triangle
+      return (
+        <Polygon
+          points={`${center},${center - r} ${center + r * 0.9},${center + r * 0.6} ${center - r * 0.9},${center + r * 0.6}`}
+          fill="#FFF"
+          stroke="#000"
+          strokeWidth={1.5}
+        />
+      );
+    case 'jupiter':
+      // Hexagon
+      const hexPoints = [];
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 2;
+        hexPoints.push(`${center + Math.cos(angle) * r},${center + Math.sin(angle) * r}`);
+      }
+      return (
+        <Polygon
+          points={hexPoints.join(' ')}
+          fill="#FFF"
+          stroke="#000"
+          strokeWidth={1.5}
+        />
+      );
+    case 'tensor':
+      // Diamond
+      return (
+        <Polygon
+          points={`${center},${center - r} ${center + r},${center} ${center},${center + r} ${center - r},${center}`}
+          fill="#FFF"
+          stroke="#000"
+          strokeWidth={1.5}
+        />
+      );
+    default:
+      return <Circle cx={center} cy={center} r={r} fill="#FFF" />;
+  }
+};
+
 export const TowerView: React.FC<TowerViewProps> = ({ tower, isSelected, onPress }) => {
   const config = TOWER_CONFIGS[tower.type];
   const range = config.rangeLevels[tower.rangeLevel - 1];
-  const size = 32;
+  const size = 44; // Bigger tower
 
   return (
     <View
@@ -33,7 +79,7 @@ export const TowerView: React.FC<TowerViewProps> = ({ tower, isSelected, onPress
       ]}
       pointerEvents="box-none"
     >
-      {/* Range Circle */}
+      {/* Range Circle - always show when selected */}
       {isSelected && (
         <Svg
           width={range * 2}
@@ -42,8 +88,8 @@ export const TowerView: React.FC<TowerViewProps> = ({ tower, isSelected, onPress
         >
           <Defs>
             <RadialGradient id="rangeGrad" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor={config.color} stopOpacity="0.1" />
-              <Stop offset="100%" stopColor={config.color} stopOpacity="0.25" />
+              <Stop offset="0%" stopColor={config.color} stopOpacity="0.15" />
+              <Stop offset="100%" stopColor={config.color} stopOpacity="0.35" />
             </RadialGradient>
           </Defs>
           <Circle
@@ -52,38 +98,59 @@ export const TowerView: React.FC<TowerViewProps> = ({ tower, isSelected, onPress
             r={range - 2}
             fill="url(#rangeGrad)"
             stroke={config.color}
-            strokeWidth={2}
-            strokeDasharray="6 4"
-            opacity={0.6}
+            strokeWidth={3}
+            strokeDasharray="8 5"
           />
         </Svg>
       )}
 
-      {/* Tower Body */}
+      {/* Tower Body - Much more visible */}
       <TouchableOpacity
         style={[
-          styles.tower,
+          styles.towerOuter,
           {
-            left: range - size / 2,
-            top: range - size / 2,
-            width: size,
-            height: size,
-            backgroundColor: config.color,
-            borderColor: isSelected ? COLORS.text : 'transparent',
+            left: range - size / 2 - 4,
+            top: range - size / 2 - 4,
+            width: size + 8,
+            height: size + 8,
+            borderColor: isSelected ? COLORS.text : config.color,
+            shadowColor: config.color,
           },
         ]}
         onPress={onPress}
         activeOpacity={0.8}
       >
-        <Text style={styles.icon}>{config.icon}</Text>
+        <Svg width={size} height={size}>
+          <Defs>
+            <RadialGradient id={`towerGrad-${tower.id}`} cx="30%" cy="30%" r="70%">
+              <Stop offset="0%" stopColor={config.color} />
+              <Stop offset="100%" stopColor={config.color} stopOpacity={0.7} />
+            </RadialGradient>
+          </Defs>
+          
+          {/* Base circle */}
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={size / 2 - 3}
+            fill={`url(#towerGrad-${tower.id})`}
+            stroke={isSelected ? COLORS.text : '#000'}
+            strokeWidth={isSelected ? 3 : 2}
+          />
+          
+          {/* Inner icon */}
+          <TowerIcon type={tower.type} color={config.color} size={size} />
+        </Svg>
         
-        {/* Level indicators */}
-        <View style={styles.levelBadge}>
+        {/* Level badge - Power */}
+        <View style={[styles.levelBadge, { backgroundColor: COLORS.solanaPurple }]}>
           <Text style={styles.levelText}>{tower.level}</Text>
         </View>
+        
+        {/* Range badge - only if upgraded */}
         {tower.rangeLevel > 1 && (
           <View style={[styles.rangeBadge, { backgroundColor: COLORS.solanaBlue }]}>
-            <Text style={styles.levelText}>{tower.rangeLevel}</Text>
+            <Text style={styles.levelText}>R{tower.rangeLevel}</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -95,45 +162,46 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
   },
-  tower: {
+  towerOuter: {
     position: 'absolute',
-    borderRadius: 16,
+    borderRadius: 100,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  icon: {
-    fontSize: 16,
+    borderWidth: 3,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    // Strong glow effect
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 10,
   },
   levelBadge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: COLORS.solanaPurple,
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#000',
   },
   rangeBadge: {
     position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    bottom: -6,
+    right: -6,
+    width: 24,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#000',
   },
   levelText: {
     color: COLORS.text,
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
   },
 });

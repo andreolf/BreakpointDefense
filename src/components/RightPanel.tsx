@@ -55,7 +55,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        
+
         {/* ===== HEADER with PAUSE ===== */}
         <View style={styles.header}>
           <Text style={styles.logoText}>🛡️ BREAKPOINT</Text>
@@ -148,7 +148,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
         {/* ===== TOWER INFO ===== */}
         <Text style={styles.sectionTitle}>🎯 TOWER</Text>
-        
+
         {selectedTower ? (
           <View style={styles.towerCard}>
             {(() => {
@@ -156,7 +156,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               const dmg = config.damage[selectedTower.level - 1];
               const fr = config.fireRate[selectedTower.level - 1];
               const range = config.rangeLevels[selectedTower.rangeLevel - 1];
-              
+
               return (
                 <>
                   {/* Tower Header */}
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     padding: 14,
     paddingBottom: 30,
   },
-  
+
   // Header
   header: {
     flexDirection: 'row',
