@@ -7,12 +7,12 @@ import { Dimensions } from 'react-native';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // =============================================================================
-// LAYOUT
+// LAYOUT - Wider panels for better UX
 // =============================================================================
-export const SIDEBAR_WIDTH = 130;
-export const LEFT_PANEL_WIDTH = 90;
-export const GAME_WIDTH = SCREEN_WIDTH - SIDEBAR_WIDTH - LEFT_PANEL_WIDTH;
-export const GAME_HEIGHT = SCREEN_HEIGHT * 0.92;
+export const SIDEBAR_WIDTH = 200;  // Right panel
+export const LEFT_PANEL_WIDTH = 0; // Remove left panel, use popup instead
+export const GAME_WIDTH = SCREEN_WIDTH - SIDEBAR_WIDTH;
+export const GAME_HEIGHT = SCREEN_HEIGHT;
 
 // =============================================================================
 // COLORS
@@ -42,14 +42,10 @@ export const COLORS = {
   hpGood: '#14F195',
   hpMedium: '#FFD700',
   hpLow: '#FF4444',
-  
-  abilityBomb: '#FF6B6B',
-  abilityFreeze: '#00D1FF',
-  abilityAirdrop: '#14F195',
 };
 
 // =============================================================================
-// TOWERS - Separate damage upgrades and range upgrades
+// TOWERS
 // =============================================================================
 export type TowerType = 'validator' | 'jupiter' | 'tensor';
 
@@ -58,12 +54,11 @@ export interface TowerConfig {
   icon: string;
   description: string;
   cost: number;
-  baseRange: number;
-  rangeLevels: number[];      // Range per range level
-  damage: number[];           // Damage per power level
-  fireRate: number[];         // Fire rate per power level
-  upgradeCost: number[];      // Power upgrade costs
-  rangeUpgradeCost: number[]; // Range upgrade costs
+  rangeLevels: number[];
+  damage: number[];
+  fireRate: number[];
+  upgradeCost: number[];
+  rangeUpgradeCost: number[];
   color: string;
   projectileColor: string;
   special?: 'chain' | 'splash';
@@ -77,9 +72,8 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
   validator: {
     name: 'Validator',
     icon: '⚡',
-    description: 'Fast attacks',
+    description: 'Fast attacks, low damage',
     cost: 50,
-    baseRange: 70,
     rangeLevels: [70, 90, 115],
     damage: [8, 14, 22],
     fireRate: [4, 5, 6],
@@ -91,9 +85,8 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
   jupiter: {
     name: 'Jupiter',
     icon: '🪐',
-    description: 'Chain attack',
+    description: 'Chain attacks to 2 enemies',
     cost: 80,
-    baseRange: 65,
     rangeLevels: [65, 85, 110],
     damage: [15, 24, 36],
     fireRate: [1.5, 2, 2.5],
@@ -109,9 +102,8 @@ export const TOWER_CONFIGS: Record<TowerType, TowerConfig> = {
   tensor: {
     name: 'Tensor',
     icon: '💎',
-    description: 'Splash area',
+    description: 'Splash damage in area',
     cost: 100,
-    baseRange: 60,
     rangeLevels: [60, 80, 100],
     damage: [25, 42, 65],
     fireRate: [0.8, 1.1, 1.4],
@@ -132,7 +124,6 @@ export type EnemyType = 'fud' | 'rugpull' | 'congestion';
 export interface EnemyConfig {
   name: string;
   icon: string;
-  description: string;
   hp: number;
   speed: number;
   reward: number;
@@ -146,7 +137,6 @@ export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
   fud: {
     name: 'FUD',
     icon: '😱',
-    description: 'Fast & weak',
     hp: 25,
     speed: 60,
     reward: 10,
@@ -158,7 +148,6 @@ export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
   rugpull: {
     name: 'Rug Pull',
     icon: '🧹',
-    description: 'Slow & tanky',
     hp: 120,
     speed: 24,
     reward: 30,
@@ -170,7 +159,6 @@ export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
   congestion: {
     name: 'Congestion',
     icon: '🚧',
-    description: 'Boss enemy',
     hp: 300,
     speed: 35,
     reward: 100,
@@ -182,27 +170,27 @@ export const ENEMY_CONFIGS: Record<EnemyType, EnemyConfig> = {
 };
 
 // =============================================================================
-// SPECIAL ABILITIES
+// ABILITIES
 // =============================================================================
 export const ABILITIES = {
   bomb: {
     name: 'Network Purge',
     icon: '💥',
-    description: 'Destroy all enemies on screen',
-    cooldown: 45,  // seconds
+    description: 'Kill all enemies',
+    cooldown: 45,
   },
   freeze: {
     name: 'Rate Limit',
     icon: '❄️',
-    description: 'Slow all enemies for 5 seconds',
+    description: 'Slow enemies 5s',
     cooldown: 30,
     duration: 5,
     slowFactor: 0.3,
   },
   airdrop: {
-    name: 'SOL Airdrop',
+    name: 'Airdrop',
     icon: '🪂',
-    description: 'Gain 100 bonus SOL',
+    description: '+100 SOL',
     cooldown: 60,
     bonus: 100,
   },
@@ -245,16 +233,15 @@ export const GAME_CONFIG = {
   projectileSpeed: 300,
   projectileSize: 5,
   
-  slotRadius: 20,
-  towerOffsetFromPath: 42,
+  towerOffsetFromPath: 45,
   minDistanceBetweenTowers: 55,
   maxTowers: 20,
-  pathClickRadius: 55,
+  pathClickRadius: 70,  // How close to path you can click to place
   
   maxTowerLevel: 3,
   maxRangeLevel: 3,
   
-  pathWidth: 26,
+  pathWidth: 28,
 };
 
 // =============================================================================
@@ -270,31 +257,23 @@ export const BIOME = {
 // PATH
 // =============================================================================
 export const PATH_WAYPOINTS = [
-  { x: -0.05, y: 0.18 },
-  { x: 0.10, y: 0.18 },
-  { x: 0.22, y: 0.12 },
-  { x: 0.32, y: 0.28 },
-  { x: 0.28, y: 0.48 },
-  { x: 0.18, y: 0.58 },
-  { x: 0.12, y: 0.72 },
-  { x: 0.22, y: 0.85 },
-  { x: 0.42, y: 0.88 },
-  { x: 0.58, y: 0.78 },
-  { x: 0.68, y: 0.58 },
-  { x: 0.75, y: 0.38 },
-  { x: 0.85, y: 0.28 },
-  { x: 0.95, y: 0.42 },
-  { x: 1.00, y: 0.52 },
-  { x: 1.08, y: 0.52 },
+  { x: -0.05, y: 0.15 },
+  { x: 0.12, y: 0.15 },
+  { x: 0.25, y: 0.10 },
+  { x: 0.35, y: 0.25 },
+  { x: 0.30, y: 0.45 },
+  { x: 0.18, y: 0.55 },
+  { x: 0.15, y: 0.70 },
+  { x: 0.25, y: 0.82 },
+  { x: 0.45, y: 0.85 },
+  { x: 0.60, y: 0.75 },
+  { x: 0.70, y: 0.55 },
+  { x: 0.78, y: 0.35 },
+  { x: 0.88, y: 0.25 },
+  { x: 0.98, y: 0.40 },
+  { x: 1.05, y: 0.50 },
 ];
 
 export function getPathPoints(width: number, height: number) {
   return PATH_WAYPOINTS.map(p => ({ x: p.x * width, y: p.y * height }));
 }
-
-// =============================================================================
-// ICONS
-// =============================================================================
-export const ECOSYSTEM_ICONS = {
-  sol: '◎',
-};

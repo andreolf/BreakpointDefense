@@ -1,5 +1,5 @@
 /**
- * Right Panel - Stats & Tower Upgrades
+ * Right Panel - Game Stats, Tower Info, Abilities
  */
 
 import React from 'react';
@@ -11,6 +11,7 @@ import {
   SIDEBAR_WIDTH,
   GAME_CONFIG,
   getTier,
+  ABILITIES,
 } from '../game/config';
 
 interface RightPanelProps {
@@ -20,6 +21,9 @@ interface RightPanelProps {
   canUpgradeRange: boolean;
   onUpgradeLevel: () => void;
   onUpgradeRange: () => void;
+  onBomb: () => void;
+  onFreeze: () => void;
+  onAirdrop: () => void;
   onPause: () => void;
 }
 
@@ -36,59 +40,121 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   canUpgradeRange,
   onUpgradeLevel,
   onUpgradeRange,
+  onBomb,
+  onFreeze,
+  onAirdrop,
   onPause,
 }) => {
   const tier = getTier(gameState.elapsedTime);
   const hpPercent = (gameState.baseHp / gameState.maxBaseHp) * 100;
   const hpColor = hpPercent > 60 ? COLORS.hpGood : hpPercent > 30 ? COLORS.hpMedium : COLORS.hpLow;
 
+  const now = Date.now();
+  const bombCooldown = Math.max(0, ABILITIES.bomb.cooldown - (now - gameState.abilities.bomb.lastUsed) / 1000);
+  const freezeCooldown = Math.max(0, ABILITIES.freeze.cooldown - (now - gameState.abilities.freeze.lastUsed) / 1000);
+  const airdropCooldown = Math.max(0, ABILITIES.airdrop.cooldown - (now - gameState.abilities.airdrop.lastUsed) / 1000);
+
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Pause Button */}
-        <TouchableOpacity style={styles.pauseBtn} onPress={onPause}>
-          <Text style={styles.pauseText}>⏸</Text>
-        </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.logo}>🛡️ BREAKPOINT</Text>
+          <TouchableOpacity style={styles.pauseBtn} onPress={onPause}>
+            <Text style={styles.pauseBtnText}>⏸</Text>
+          </TouchableOpacity>
+        </View>
 
-        {/* Stats */}
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>◎ SOL</Text>
-          <Text style={styles.statValue}>{gameState.sol}</Text>
-        </View>
-        
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>⏱ Time</Text>
-          <Text style={styles.statValue}>{formatTime(gameState.elapsedTime)}</Text>
-        </View>
-        
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>🌊 Wave</Text>
-          <Text style={styles.statValue}>{gameState.wave}</Text>
-        </View>
-        
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>💀 Kills</Text>
-          <Text style={styles.statValue}>{gameState.kills}</Text>
-        </View>
-        
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>🗼 Towers</Text>
-          <Text style={styles.statValue}>{gameState.towers.length}/{GAME_CONFIG.maxTowers}</Text>
+        {/* Main Stats */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>◎ {gameState.sol}</Text>
+            <Text style={styles.statLabel}>SOL</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{formatTime(gameState.elapsedTime)}</Text>
+            <Text style={styles.statLabel}>Time</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{gameState.wave}</Text>
+            <Text style={styles.statLabel}>Wave</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{gameState.kills}</Text>
+            <Text style={styles.statLabel}>Kills</Text>
+          </View>
         </View>
 
         {/* HP Bar */}
-        <View style={styles.hpContainer}>
-          <Text style={styles.hpLabel}>Network HP</Text>
+        <View style={styles.hpSection}>
+          <View style={styles.hpHeader}>
+            <Text style={styles.hpLabel}>🌐 Network Health</Text>
+            <Text style={styles.hpValue}>{gameState.baseHp}/{gameState.maxBaseHp}</Text>
+          </View>
           <View style={styles.hpBar}>
             <View style={[styles.hpFill, { width: `${hpPercent}%`, backgroundColor: hpColor }]} />
           </View>
-          <Text style={styles.hpText}>{gameState.baseHp}/{gameState.maxBaseHp}</Text>
         </View>
 
         {/* Tier */}
-        <View style={styles.tierContainer}>
+        <View style={styles.tierSection}>
           <Text style={styles.tierIcon}>{tier.icon}</Text>
           <Text style={[styles.tierName, { color: tier.color }]}>{tier.name}</Text>
+        </View>
+
+        {/* Towers count */}
+        <Text style={styles.towerCount}>
+          🗼 Towers: {gameState.towers.length}/{GAME_CONFIG.maxTowers}
+        </Text>
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Abilities */}
+        <Text style={styles.sectionTitle}>⚡ Abilities</Text>
+        <View style={styles.abilitiesRow}>
+          <TouchableOpacity
+            style={[styles.abilityBtn, bombCooldown > 0 && styles.abilityDisabled]}
+            onPress={onBomb}
+            disabled={bombCooldown > 0}
+          >
+            <Text style={styles.abilityIcon}>{ABILITIES.bomb.icon}</Text>
+            {bombCooldown > 0 ? (
+              <Text style={styles.cooldown}>{Math.ceil(bombCooldown)}s</Text>
+            ) : (
+              <Text style={styles.abilityName}>Purge</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.abilityBtn,
+              freezeCooldown > 0 && styles.abilityDisabled,
+              gameState.abilities.freeze.active && styles.abilityActive,
+            ]}
+            onPress={onFreeze}
+            disabled={freezeCooldown > 0}
+          >
+            <Text style={styles.abilityIcon}>{ABILITIES.freeze.icon}</Text>
+            {freezeCooldown > 0 ? (
+              <Text style={styles.cooldown}>{Math.ceil(freezeCooldown)}s</Text>
+            ) : (
+              <Text style={styles.abilityName}>Freeze</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.abilityBtn, airdropCooldown > 0 && styles.abilityDisabled]}
+            onPress={onAirdrop}
+            disabled={airdropCooldown > 0}
+          >
+            <Text style={styles.abilityIcon}>{ABILITIES.airdrop.icon}</Text>
+            {airdropCooldown > 0 ? (
+              <Text style={styles.cooldown}>{Math.ceil(airdropCooldown)}s</Text>
+            ) : (
+              <Text style={styles.abilityName}>+100◎</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Divider */}
@@ -97,76 +163,84 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         {/* Selected Tower */}
         {selectedTower ? (
           <View style={styles.towerInfo}>
-            <Text style={styles.sectionTitle}>Selected Tower</Text>
+            <Text style={styles.sectionTitle}>🎯 Selected Tower</Text>
             
             {(() => {
               const config = TOWER_CONFIGS[selectedTower.type];
-              const levelDmg = config.damage[selectedTower.level - 1];
-              const levelFR = config.fireRate[selectedTower.level - 1];
-              const rangeVal = config.rangeLevels[selectedTower.rangeLevel - 1];
+              const dmg = config.damage[selectedTower.level - 1];
+              const fr = config.fireRate[selectedTower.level - 1];
+              const range = config.rangeLevels[selectedTower.rangeLevel - 1];
               
               return (
                 <>
-                  <View style={[styles.towerIcon, { backgroundColor: config.color }]}>
-                    <Text style={styles.towerEmoji}>{config.icon}</Text>
-                  </View>
-                  <Text style={styles.towerName}>{config.name}</Text>
-                  
-                  {/* Current Stats */}
-                  <View style={styles.statsBox}>
-                    <Text style={styles.statsLabel}>
-                      ⚔️ DMG: {levelDmg} (Lv {selectedTower.level})
-                    </Text>
-                    <Text style={styles.statsLabel}>
-                      ⚡ Rate: {levelFR}/s
-                    </Text>
-                    <Text style={styles.statsLabel}>
-                      📡 Range: {rangeVal} (Lv {selectedTower.rangeLevel})
-                    </Text>
+                  <View style={styles.towerHeader}>
+                    <View style={[styles.towerIconBig, { backgroundColor: config.color }]}>
+                      <Text style={styles.towerEmoji}>{config.icon}</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.towerName}>{config.name}</Text>
+                      <Text style={styles.towerLevels}>
+                        Power Lv.{selectedTower.level} • Range Lv.{selectedTower.rangeLevel}
+                      </Text>
+                    </View>
                   </View>
 
-                  {/* Upgrade Level */}
-                  {selectedTower.level < GAME_CONFIG.maxTowerLevel ? (
-                    <TouchableOpacity
-                      style={[styles.upgradeBtn, !canUpgradeLevel && styles.upgradeBtnDisabled]}
-                      onPress={onUpgradeLevel}
-                      disabled={!canUpgradeLevel}
-                    >
-                      <Text style={styles.upgradeBtnText}>
-                        ⬆️ Upgrade DMG
-                      </Text>
-                      <Text style={styles.upgradeCost}>
-                        ◎ {config.upgradeCost[selectedTower.level - 1]}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={styles.maxLevel}>DMG MAX</Text>
-                  )}
+                  <View style={styles.towerStats}>
+                    <View style={styles.towerStatRow}>
+                      <Text style={styles.towerStatLabel}>⚔️ Damage</Text>
+                      <Text style={styles.towerStatValue}>{dmg}</Text>
+                    </View>
+                    <View style={styles.towerStatRow}>
+                      <Text style={styles.towerStatLabel}>⚡ Fire Rate</Text>
+                      <Text style={styles.towerStatValue}>{fr}/s</Text>
+                    </View>
+                    <View style={styles.towerStatRow}>
+                      <Text style={styles.towerStatLabel}>📡 Range</Text>
+                      <Text style={styles.towerStatValue}>{range}</Text>
+                    </View>
+                  </View>
 
-                  {/* Upgrade Range */}
-                  {selectedTower.rangeLevel < GAME_CONFIG.maxRangeLevel ? (
-                    <TouchableOpacity
-                      style={[styles.upgradeBtn, styles.rangeBtnStyle, !canUpgradeRange && styles.upgradeBtnDisabled]}
-                      onPress={onUpgradeRange}
-                      disabled={!canUpgradeRange}
-                    >
-                      <Text style={styles.upgradeBtnText}>
-                        📡 Upgrade Range
-                      </Text>
-                      <Text style={styles.upgradeCost}>
-                        ◎ {config.rangeUpgradeCost[selectedTower.rangeLevel - 1]}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={styles.maxLevel}>RANGE MAX</Text>
-                  )}
+                  {/* Upgrade buttons */}
+                  <View style={styles.upgradeButtons}>
+                    {selectedTower.level < GAME_CONFIG.maxTowerLevel ? (
+                      <TouchableOpacity
+                        style={[styles.upgradeBtn, !canUpgradeLevel && styles.upgradeBtnDisabled]}
+                        onPress={onUpgradeLevel}
+                        disabled={!canUpgradeLevel}
+                      >
+                        <Text style={styles.upgradeBtnText}>⬆️ Power</Text>
+                        <Text style={styles.upgradeCost}>◎{config.upgradeCost[selectedTower.level - 1]}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.maxBadge}>
+                        <Text style={styles.maxText}>MAX PWR</Text>
+                      </View>
+                    )}
+
+                    {selectedTower.rangeLevel < GAME_CONFIG.maxRangeLevel ? (
+                      <TouchableOpacity
+                        style={[styles.upgradeBtn, styles.rangeBtnColor, !canUpgradeRange && styles.upgradeBtnDisabled]}
+                        onPress={onUpgradeRange}
+                        disabled={!canUpgradeRange}
+                      >
+                        <Text style={styles.upgradeBtnText}>📡 Range</Text>
+                        <Text style={styles.upgradeCost}>◎{config.rangeUpgradeCost[selectedTower.rangeLevel - 1]}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.maxBadge}>
+                        <Text style={styles.maxText}>MAX RNG</Text>
+                      </View>
+                    )}
+                  </View>
                 </>
               );
             })()}
           </View>
         ) : (
           <View style={styles.noSelection}>
-            <Text style={styles.noSelectionText}>Tap a tower to upgrade</Text>
+            <Text style={styles.noSelectionIcon}>👆</Text>
+            <Text style={styles.noSelectionText}>Click near the path to build</Text>
+            <Text style={styles.noSelectionHint}>Tap a tower to upgrade it</Text>
           </View>
         )}
       </ScrollView>
@@ -178,133 +252,207 @@ const styles = StyleSheet.create({
   container: {
     width: SIDEBAR_WIDTH,
     backgroundColor: COLORS.bgDarker,
-    borderLeftWidth: 1,
+    borderLeftWidth: 2,
     borderLeftColor: COLORS.bgCardLight,
   },
   scroll: {
-    padding: 10,
+    padding: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logo: {
+    color: COLORS.solanaGreen,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   pauseBtn: {
-    alignSelf: 'center',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.bgCard,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  pauseText: {
-    fontSize: 18,
+  pauseBtnText: {
+    fontSize: 16,
   },
-  statRow: {
+  statsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
+    flexWrap: 'wrap',
+    marginBottom: 16,
+  },
+  statBox: {
+    width: '50%',
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  statValue: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: '700',
   },
   statLabel: {
     color: COLORS.textMuted,
     fontSize: 11,
+    marginTop: 2,
   },
-  statValue: {
-    color: COLORS.text,
-    fontSize: 12,
-    fontWeight: '600',
+  hpSection: {
+    marginBottom: 16,
   },
-  hpContainer: {
-    marginTop: 8,
-    marginBottom: 8,
+  hpHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
   hpLabel: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  hpValue: {
     color: COLORS.textMuted,
-    fontSize: 10,
-    marginBottom: 4,
+    fontSize: 12,
   },
   hpBar: {
-    height: 8,
+    height: 10,
     backgroundColor: COLORS.bgCard,
-    borderRadius: 4,
+    borderRadius: 5,
     overflow: 'hidden',
   },
   hpFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 5,
   },
-  hpText: {
-    color: COLORS.text,
-    fontSize: 10,
-    marginTop: 2,
-    textAlign: 'right',
-  },
-  tierContainer: {
+  tierSection: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginBottom: 8,
   },
   tierIcon: {
-    fontSize: 20,
-    marginRight: 6,
+    fontSize: 24,
+    marginRight: 8,
   },
   tierName: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '700',
+  },
+  towerCount: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 16,
   },
   divider: {
     height: 1,
     backgroundColor: COLORS.bgCardLight,
-    marginVertical: 14,
+    marginVertical: 16,
   },
   sectionTitle: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  abilitiesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  abilityBtn: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: COLORS.bgCard,
+    borderRadius: 10,
+    paddingVertical: 10,
+    marginHorizontal: 4,
+  },
+  abilityDisabled: {
+    opacity: 0.4,
+  },
+  abilityActive: {
+    backgroundColor: COLORS.solanaBlue,
+    opacity: 0.8,
+  },
+  abilityIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  abilityName: {
     color: COLORS.textMuted,
     fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginBottom: 10,
-    textAlign: 'center',
+  },
+  cooldown: {
+    color: COLORS.text,
+    fontSize: 11,
+    fontWeight: '600',
   },
   towerInfo: {
-    alignItems: 'center',
+    marginBottom: 20,
   },
-  towerIcon: {
+  towerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  towerIconBig: {
     width: 50,
     height: 50,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginRight: 12,
   },
   towerEmoji: {
     fontSize: 26,
   },
   towerName: {
     color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 10,
+    fontSize: 18,
+    fontWeight: '700',
   },
-  statsBox: {
+  towerLevels: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  towerStats: {
     backgroundColor: COLORS.bgCard,
-    padding: 10,
-    borderRadius: 8,
-    width: '100%',
+    borderRadius: 10,
+    padding: 12,
     marginBottom: 12,
   },
-  statsLabel: {
+  towerStatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  towerStatLabel: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+  },
+  towerStatValue: {
     color: COLORS.text,
-    fontSize: 11,
-    marginBottom: 4,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  upgradeButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   upgradeBtn: {
+    flex: 1,
     backgroundColor: COLORS.solanaGreen,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 12,
     borderRadius: 8,
-    width: '100%',
     alignItems: 'center',
-    marginBottom: 8,
+    marginHorizontal: 4,
   },
-  rangeBtnStyle: {
+  rangeBtnColor: {
     backgroundColor: COLORS.solanaBlue,
   },
   upgradeBtnDisabled: {
@@ -312,28 +460,45 @@ const styles = StyleSheet.create({
   },
   upgradeBtnText: {
     color: COLORS.bgDark,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   upgradeCost: {
     color: COLORS.bgDark,
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 2,
   },
-  maxLevel: {
+  maxBadge: {
+    flex: 1,
+    backgroundColor: COLORS.bgCard,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  maxText: {
     color: COLORS.textMuted,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
   },
   noSelection: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 30,
+  },
+  noSelectionIcon: {
+    fontSize: 40,
+    marginBottom: 12,
   },
   noSelectionText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  noSelectionHint: {
     color: COLORS.textMuted,
-    fontSize: 11,
-    fontStyle: 'italic',
+    fontSize: 12,
+    marginTop: 6,
+    textAlign: 'center',
   },
 });
-

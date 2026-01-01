@@ -1,15 +1,15 @@
 /**
  * Game Screen
- * Main gameplay with tap-to-place towers, zoom & pan
+ * Click near path → popup → select tower → place
  */
 
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { View, StyleSheet, Platform } from 'react-native';
 import {
   createInitialState,
   updateGame,
   placeTower,
+  canPlaceTower,
   canUpgradeTowerLevel,
   canUpgradeTowerRange,
   upgradeTowerLevel,
@@ -22,7 +22,7 @@ import {
   useAirdrop,
 } from '../game/engine';
 import { GameState } from '../game/types';
-import { COLORS, TowerType, GAME_WIDTH, GAME_HEIGHT } from '../game/config';
+import { COLORS, TowerType, GAME_WIDTH, GAME_HEIGHT, GAME_CONFIG } from '../game/config';
 import { useGameLoop } from '../hooks/useGameLoop';
 import { useHaptics } from '../hooks/useHaptics';
 
@@ -31,9 +31,9 @@ import { EnemyView } from '../components/EnemyView';
 import { ProjectileView } from '../components/ProjectileView';
 import { BaseView } from '../components/BaseView';
 import { TowerView } from '../components/TowerView';
-import { LeftPanel } from '../components/LeftPanel';
 import { RightPanel } from '../components/RightPanel';
 import { PauseModal } from '../components/PauseModal';
+import { TowerPopup } from '../components/TowerPopup';
 import { ZoomPanContainer } from '../components/ZoomPanContainer';
 
 interface GameScreenProps {
@@ -44,8 +44,12 @@ interface GameScreenProps {
 export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) => {
   const [gameState, setGameState] = useState<GameState>(createInitialState);
   const [selectedTowerId, setSelectedTowerId] = useState<string | null>(null);
-  const [selectedTowerType, setSelectedTowerType] = useState<TowerType | null>(null);
   const [showPause, setShowPause] = useState(false);
+  
+  // Popup state
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
+  const [pendingPlacePosition, setPendingPlacePosition] = useState({ x: 0, y: 0 });
   
   const { triggerLight, triggerMedium } = useHaptics();
 
@@ -61,26 +65,23 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
     });
   }, !gameState.isPaused && gameState.isRunning);
 
-  // Handle tower drop from drag
-  const handleDragTower = useCallback((type: TowerType, x: number, y: number) => {
-    setGameState((prev) => {
-      const next = placeTower(prev, x, y, type);
-      if (next !== prev) {
-        triggerMedium();
-        const newTower = next.towers[next.towers.length - 1];
-        setSelectedTowerId(newTower?.id || null);
-        setSelectedTowerType(null);
-      }
-      return next;
-    });
-  }, [triggerMedium]);
-
-  // Handle click on map to place selected tower type
+  // Handle click on map - show popup if valid placement spot
   const handleMapClick = useCallback((x: number, y: number) => {
-    if (!selectedTowerType) return;
+    // Check if any tower type can be placed here
+    const canPlace = canPlaceTower(gameState, x, y, 'validator'); // Just check with cheapest
     
+    if (canPlace) {
+      setPendingPlacePosition({ x, y });
+      setPopupPosition({ x: x + 50, y: y - 50 }); // Offset popup from click
+      setPopupVisible(true);
+      setSelectedTowerId(null);
+    }
+  }, [gameState]);
+
+  // Handle tower type selection from popup
+  const handleSelectTowerType = useCallback((type: TowerType) => {
     setGameState((prev) => {
-      const next = placeTower(prev, x, y, selectedTowerType);
+      const next = placeTower(prev, pendingPlacePosition.x, pendingPlacePosition.y, type);
       if (next !== prev) {
         triggerMedium();
         const newTower = next.towers[next.towers.length - 1];
@@ -88,18 +89,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
       }
       return next;
     });
-  }, [selectedTowerType, triggerMedium]);
+    setPopupVisible(false);
+  }, [pendingPlacePosition, triggerMedium]);
 
-  // Handle tower type selection from left panel
-  const handleSelectTowerType = useCallback((type: TowerType) => {
-    setSelectedTowerType((prev) => (prev === type ? null : type));
-    setSelectedTowerId(null);
-  }, []);
-
-  // Handle tower selection
+  // Handle tower selection (tap existing tower)
   const handleTowerPress = useCallback((towerId: string) => {
     setSelectedTowerId((prev) => (prev === towerId ? null : towerId));
-    setSelectedTowerType(null);
     triggerLight();
   }, [triggerLight]);
 
@@ -166,18 +161,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
   const selectedTower = gameState.towers.find((t) => t.id === selectedTowerId) || null;
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      {/* Left Panel - Towers + Abilities */}
-      <LeftPanel
-        gameState={gameState}
-        selectedTowerType={selectedTowerType}
-        onSelectTowerType={handleSelectTowerType}
-        onDragTower={handleDragTower}
-        onBomb={handleBomb}
-        onFreeze={handleFreeze}
-        onAirdrop={handleAirdrop}
-      />
-
+    <View style={styles.container}>
       {/* Game World with Zoom & Pan */}
       <View style={styles.gameWorldContainer}>
         <ZoomPanContainer
@@ -212,7 +196,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
         </ZoomPanContainer>
       </View>
 
-      {/* Right Panel - Stats + Upgrades */}
+      {/* Right Panel - Stats + Upgrades + Abilities */}
       <RightPanel
         gameState={gameState}
         selectedTower={selectedTower}
@@ -220,14 +204,26 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, onQuit }) =>
         canUpgradeRange={selectedTowerId ? canUpgradeTowerRange(gameState, selectedTowerId) : false}
         onUpgradeLevel={handleUpgradeLevel}
         onUpgradeRange={handleUpgradeRange}
+        onBomb={handleBomb}
+        onFreeze={handleFreeze}
+        onAirdrop={handleAirdrop}
         onPause={handlePause}
+      />
+
+      {/* Tower Selection Popup */}
+      <TowerPopup
+        visible={popupVisible}
+        position={popupPosition}
+        sol={gameState.sol}
+        onSelect={handleSelectTowerType}
+        onClose={() => setPopupVisible(false)}
       />
 
       {/* Pause Modal */}
       {showPause && (
         <PauseModal onResume={handleResume} onQuit={handleQuit} />
       )}
-    </GestureHandlerRootView>
+    </View>
   );
 };
 
